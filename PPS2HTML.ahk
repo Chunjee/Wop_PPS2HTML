@@ -3,13 +3,13 @@
 
 #include inireadwrite.ahk
 
-Version = Version 1.8a
+Version = Version 1.8b
 SetWorkingDir %A_ScriptDir%
 Working_Directory = %A_WorkingDir%
 
 
 ;~~~~~~~~~~~~~~~~~~~~~
-;In Progress
+;StartUp
 ;~~~~~~~~~~~~~~~~~~~~~
 FileDelete, %A_WorkingDir%\html.txt
 Day:= %A_Now%
@@ -74,14 +74,11 @@ StringLen, FileNameLength, A_LoopFileName
 	;TrackTLA now has tracks abbreviation, find a way to do that.
 	;"The value in the variable named Var is " . Var
 	
-	Counter = 1
 	BUFFER := IR_%TrackTLA%
 		if BUFFER = 
 		{
 		Msgbox, There was no corresponding Ireland Track found for %TrackTLA%, please update the config.ini file and run again. `n `n You should have something like this under the [IR] section: `n[IR]`n %TrackTLA%=Track Name
 		ExitApp
-		BUFFER = IR_NOTFOUND%Counter%
-		Counter += 1
 		}
 	StringReplace, BUFFER, BUFFER, %A_SPACE%, _, All
 	FileMove, %A_WorkingDir%\%A_LoopFileName%, %A_WorkingDir%\%BUFFER%%DateMon%%DateDay%%Options_Year%-li.pdf, 1
@@ -116,14 +113,11 @@ StringLen, FileNameLength, A_LoopFileName
 	;TrackTLA now has tracks abbreviation, find a way to do that.
 	;"The value in the variable named Var is " . Var
 	
-	Counter = 1
 	BUFFER := GB_%TrackTLA%
 		if BUFFER = 
 		{
 		Msgbox, There was no corresponding Great Britain Track found for %TrackTLA%, please update the config.ini file and run again. `n `n You should have something like this under the [GB] section: `n[GB]`n %TrackTLA%=Track Name
 		ExitApp
-		BUFFER = GB_NOTFOUND%Counter%
-		Counter += 1
 		}
 	StringReplace, BUFFER, BUFFER, %A_SPACE%, _, All
 	FileMove, %A_WorkingDir%\%A_LoopFileName%, %A_WorkingDir%\%BUFFER%%DateMon%%DateDay%%Options_Year%-li.pdf, 1
