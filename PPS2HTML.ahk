@@ -92,10 +92,13 @@ StringLen, FileNameLength, A_LoopFileName
 ;### GREAT BRITAIN---------------------------------------------
 Loop, %A_WorkingDir%\*.pdf
 {
-StringLen, FileNameLength, A_LoopFileName
+;StringLen, FileNameLength, A_LoopFileName
 	;Is this track GB? They all have "_INTER" in the name and are longer then 23 characters.
+	regexmatch(A_LoopFileName, "(\D+)\(D\)_INTER\.", RE_GB_FileName)
 	If (FileNameLength >= 23 && FileNameLength < 26 && InStr(A_LoopFileName, "_INTER.pdf") )
 	{
+	;Pull date as three separate variables
+	regexmatch(A_LoopFileName, "(\d\d\d\d)(\d\d)(\d\d)..\(D\)_INTER\.", RE_Date)
 		If FileNameLength = 23
 		{
 		TrimDateRight = 15
