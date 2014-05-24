@@ -178,7 +178,7 @@ InsertBlank(void)
 FileAppend,
 (
 
-      Great Britian\Ireland
+      Great Britain\Ireland
 
 ), %A_ScriptDir%\html.txt
 
@@ -254,7 +254,7 @@ InsertBlank(void)
 FileAppend,
 (
 
-      Great Britian\Ireland
+      Great Britain\Ireland
 
 ), %A_ScriptDir%\html.txt
 
