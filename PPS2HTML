@@ -5,13 +5,13 @@
 
 Version = Version 1.8a
 SetWorkingDir %A_ScriptDir%
-Working_Directory = %A_WorkingDir%
+Working_Directory = %A_ScriptDir%
 
 
 ;~~~~~~~~~~~~~~~~~~~~~
 ;In Progress
 ;~~~~~~~~~~~~~~~~~~~~~
-FileDelete, %A_WorkingDir%\html.txt
+FileDelete, %A_ScriptDir%\html.txt
 Day:= %A_Now%
 Day+=1, d
 FormatTime, Day,%Day%, dddd
@@ -32,7 +32,7 @@ ExitApp
 
 
 ;### AUSTRALIA---------------------------------------------
-Loop, %A_WorkingDir%\*.pdf
+Loop, %A_ScriptDir%\*.pdf
 {
 StringLen, FileNameLength, A_LoopFileName
 	;Is this track Aus? They all have "ppAB" in the name
@@ -42,7 +42,7 @@ StringLen, FileNameLength, A_LoopFileName
 	StringTrimLeft, DateBoth, DateBoth, 7
 	StringTrimRight, DateMon, DateBoth, 2
 	StringTrimLeft, DateDay, DateBoth, 2
-	FileMove, %A_WorkingDir%\%A_LoopFileName%, %A_WorkingDir%\Australia%DateMon%%DateDay%%Options_Year%-li.pdf, 1
+	FileMove, %A_ScriptDir%\%A_LoopFileName%, %A_ScriptDir%\Australia%DateMon%%DateDay%%Options_Year%-li.pdf, 1
 		If Errorlevel
 		{
 		Msgbox, There was a problem renaming the %A_LoopFileName% file. Permissions/FileInUse
@@ -51,7 +51,7 @@ StringLen, FileNameLength, A_LoopFileName
 }
 
 ;### IRELAND---------------------------------------------
-Loop, %A_WorkingDir%\*.pdf
+Loop, %A_ScriptDir%\*.pdf
 {
 StringLen, FileNameLength, A_LoopFileName
 	;Is this track IR? They all have "_INTER_IRE" in the name
@@ -84,7 +84,7 @@ StringLen, FileNameLength, A_LoopFileName
 		Counter += 1
 		}
 	StringReplace, BUFFER, BUFFER, %A_SPACE%, _, All
-	FileMove, %A_WorkingDir%\%A_LoopFileName%, %A_WorkingDir%\%BUFFER%%DateMon%%DateDay%%Options_Year%-li.pdf, 1
+	FileMove, %A_ScriptDir%\%A_LoopFileName%, %A_ScriptDir%\%BUFFER%%DateMon%%DateDay%%Options_Year%-li.pdf, 1
 		If Errorlevel
 		{
 		Msgbox, There was a problem renaming the %A_LoopFileName% file. Permissions\FileInUse
@@ -93,7 +93,7 @@ StringLen, FileNameLength, A_LoopFileName
 }
 
 ;### GREAT BRITAIN---------------------------------------------
-Loop, %A_WorkingDir%\*.pdf
+Loop, %A_ScriptDir%\*.pdf
 {
 StringLen, FileNameLength, A_LoopFileName
 	;Is this track GB? They all have "_INTER" in the name and are longer then 23 characters.
@@ -126,7 +126,7 @@ StringLen, FileNameLength, A_LoopFileName
 		Counter += 1
 		}
 	StringReplace, BUFFER, BUFFER, %A_SPACE%, _, All
-	FileMove, %A_WorkingDir%\%A_LoopFileName%, %A_WorkingDir%\%BUFFER%%DateMon%%DateDay%%Options_Year%-li.pdf, 1
+	FileMove, %A_ScriptDir%\%A_LoopFileName%, %A_ScriptDir%\%BUFFER%%DateMon%%DateDay%%Options_Year%-li.pdf, 1
 		If Errorlevel
 		{
 		Msgbox, There was a problem renaming the %A_LoopFileName% file. Permissions\FileInUse
@@ -143,7 +143,7 @@ InputBox, Weekday , Weekday name, %A_Tab%%A_Space%%A_Space%%A_Space%%A_Space%%A_
 FileAppend,
 (
 -=TVG 3=---------------------
-), %A_WorkingDir%\html.txt
+), %A_ScriptDir%\html.txt
 InsertBlank(void)
 
 FileAppend,
@@ -151,12 +151,12 @@ FileAppend,
 
       Australia
 
-), %A_WorkingDir%\html.txt
+), %A_ScriptDir%\html.txt
 
 
 InsertBlank(void)
 
-Loop, %A_WorkingDir%\*.pdf
+Loop, %A_ScriptDir%\*.pdf
 {
 
 StringTrimRight, Trackname, A_LoopFileName, 13
@@ -167,7 +167,7 @@ StringTrimRight, Trackname, A_LoopFileName, 13
 	(
 	<a href="/forms/%A_LoopFileName%" target="_blank">%Weekday% PPs</a><br />
 	
-	), %A_WorkingDir%\html.txt
+	), %A_ScriptDir%\html.txt
 	}
 
 }
@@ -180,11 +180,11 @@ FileAppend,
 
       Great Britian\Ireland
 
-), %A_WorkingDir%\html.txt
+), %A_ScriptDir%\html.txt
 
 InsertBlank(void)
 
-Loop, %A_WorkingDir%\*.pdf
+Loop, %A_ScriptDir%\*.pdf
 {
 IfInString, A_LoopFileName, Aus
 	{
@@ -198,13 +198,13 @@ FileAppend,
 (
 <a href="/forms/%A_LoopFileNameNoSpace%" target="_blank">%Trackname%, %Weekday% PPs</a><br />
 
-), %A_WorkingDir%\html.txt
+), %A_ScriptDir%\html.txt
 
 }
 FileAppend,
 (
 <br \>
-), %A_WorkingDir%\html.txt
+), %A_ScriptDir%\html.txt
 
 
 InsertBlank(void)
@@ -219,7 +219,7 @@ FileAppend,
 (
 -=TVG 2=---------------------
 
-), %A_WorkingDir%\html.txt
+), %A_ScriptDir%\html.txt
 
 
 FileAppend,
@@ -227,12 +227,12 @@ FileAppend,
 
       Australia
 
-), %A_WorkingDir%\html.txt
+), %A_ScriptDir%\html.txt
 
 
 InsertBlank(void)
 
-Loop, %A_WorkingDir%\*.pdf
+Loop, %A_ScriptDir%\*.pdf
 {
 
 StringTrimRight, Trackname, A_LoopFileName, 13
@@ -243,7 +243,7 @@ StringReplace, TrackName, TrackName, _, %A_SPACE%, All
 	(
 	<a href="https://www.tvg.com/forms/%A_LoopFileName%" target="_blank">%Weekday% PPs</a><br />
 	
-	), %A_WorkingDir%\html.txt
+	), %A_ScriptDir%\html.txt
 	}
 
 }
@@ -256,11 +256,11 @@ FileAppend,
 
       Great Britian\Ireland
 
-), %A_WorkingDir%\html.txt
+), %A_ScriptDir%\html.txt
 
 InsertBlank(void)
 
-Loop, %A_WorkingDir%\*.pdf
+Loop, %A_ScriptDir%\*.pdf
 {
 IfInString, A_LoopFileName, Aus
 	{
@@ -274,21 +274,21 @@ FileAppend,
 (
 <a href="https://www.tvg.com/forms/%A_LoopFileNameNoSpace%" target="_blank">%Trackname%, %Weekday% PPs</a><br />
 
-), %A_WorkingDir%\html.txt
+), %A_ScriptDir%\html.txt
 
 }
 FileAppend,
 (
 <br \>
-), %A_WorkingDir%\html.txt
+), %A_ScriptDir%\html.txt
 
 
 
 ;Ok we have everything done, just need to remove all spaces from all pdf filenames
-Loop, %A_WorkingDir%\*.pdf
+Loop, %A_ScriptDir%\*.pdf
 {
 StringReplace, A_LoopFileNameNoSpace, A_LoopFileName, %A_SPACE%, , All
-FileMove, %A_WorkingDir%\%A_LoopFileName%, %A_WorkingDir%\%A_LoopFileNameNoSpace%, 1
+FileMove, %A_ScriptDir%\%A_LoopFileName%, %A_ScriptDir%\%A_LoopFileNameNoSpace%, 1
 	If Errorlevel
 	{
 	Msgbox, There was a problem removing spaces from the %A_LoopFileName% file. Permissions\Duplicate\Unknown
@@ -312,7 +312,7 @@ InsertTitle(Text)
 FileAppend,
 (
 %Text%
-), %A_WorkingDir%\html.txt
+), %A_ScriptDir%\html.txt
 }
 return
 
@@ -327,6 +327,6 @@ FileAppend,
 (
 
 
-), %A_WorkingDir%\html.txt
+), %A_ScriptDir%\html.txt
 }
 return
