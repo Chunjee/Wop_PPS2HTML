@@ -1,7 +1,7 @@
 #NoTrayIcon
 #SingleInstance force
 
-#include inireadwrite.ahk
+#include inireadwrite
 
 Version = Version 1.8a
 SetWorkingDir %A_ScriptDir%
@@ -19,8 +19,6 @@ INI_Init()
 INI_Load()
 INI_writeAll()
 
-;ListVars
-;Msgbox, alf
 
 If (Ini_Loaded != 1)
 {
