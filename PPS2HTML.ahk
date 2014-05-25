@@ -1,23 +1,22 @@
 #NoTrayIcon
 #SingleInstance force
 
-#include inireadwrite.ahk
+#include inireadwrite
 
-Version = Version 1.8b
+Version = Version 2.0
 SetWorkingDir %A_ScriptDir%
-Working_Directory = %A_WorkingDir%
+Working_Directory = %A_ScriptDir%
 
 
 ;~~~~~~~~~~~~~~~~~~~~~
 ;StartUp
 ;~~~~~~~~~~~~~~~~~~~~~
-FileDelete, %A_WorkingDir%\html.txt
+FileDelete, %A_ScriptDir%\html.txt
 Day:= %A_Now%
 Day+=1, d
 FormatTime, Day,%Day%, dddd
 INI_Init()
 INI_Load()
-INI_writeAll()
 
 ;ListVars
 ;Msgbox, alf
@@ -31,106 +30,57 @@ ExitApp
 
 
 
-;### AUSTRALIA---------------------------------------------
-Loop, %A_WorkingDir%\*.pdf
-{
-StringLen, FileNameLength, A_LoopFileName
+;### AUSTRALIA--------------------------------------------
+Loop, %A_ScriptDir%\*.pdf {
 	;Is this track Aus? They all have "ppAB" in the name
-	If (FileNameLength >= 14 && FileNameLength < 16 && InStr(A_LoopFileName, "ppAB") )
-	{
-	StringTrimRight, DateBoth, A_LoopFileName, 4
-	StringTrimLeft, DateBoth, DateBoth, 7
-	StringTrimRight, DateMon, DateBoth, 2
-	StringTrimLeft, DateDay, DateBoth, 2
-	FileMove, %A_WorkingDir%\%A_LoopFileName%, %A_WorkingDir%\Australia%DateMon%%DateDay%%Options_Year%-li.pdf, 1
-		If Errorlevel
-		{
+	regexmatch(A_LoopFileName, "ppAB(\d\d)(\d\d)\.", RE_Aus)
+	If (RE_Aus1 != "") {
+	FileMove, %A_ScriptDir%\%A_LoopFileName%, %A_ScriptDir%\Australia%RE_Aus1%%RE_Aus2%%Options_Year%-li.pdf, 1
+		If Errorlevel {
 		Msgbox, There was a problem renaming the %A_LoopFileName% file. Permissions/FileInUse
 		}
 	}
 }
 
 ;### IRELAND---------------------------------------------
-Loop, %A_WorkingDir%\*.pdf
-{
-StringLen, FileNameLength, A_LoopFileName
+Loop, %A_ScriptDir%\*.pdf {
 	;Is this track IR? They all have "_INTER_IRE" in the name
-	If (FileNameLength >= 27 && FileNameLength < 29 && InStr(A_LoopFileName, "_INTER_IRE.pdf") )
-	{
-		If FileNameLength = 27
-		{
-		TrimDateRight = 19
-		}
-		else
-		{
-		TrimDateRight = 20
-		}
-	StringTrimRight, TrackTLA, A_LoopFileName, 17
-	StringTrimLeft, TrackTLA, TrackTLA, 8
-	StringTrimRight, DateBoth, A_LoopFileName, %TrimDateRight%
-	StringTrimLeft, DateBoth, DateBoth, 4
-	StringTrimRight, DateMon, DateBoth, 2
-	StringTrimLeft, DateDay, DateBoth, 2
-	;TrackTLA now has tracks abbreviation, find a way to do that.
-	;"The value in the variable named Var is " . Var
-	
-	BUFFER := IR_%TrackTLA%
-		if BUFFER = 
-		{
+	regexmatch(A_LoopFileName, "(\d\d\d\d)(\d\d)(\d\d)(\D+)\(D\)_INTER_IRE\.", RE_Ireland)
+	If (RE_Ireland1 != "") {
+	TrackTLA := RE_Ireland
+	TrackName := IR_%TrackTLA%
+		if (TrackName = ) {
 		Msgbox, There was no corresponding Ireland Track found for %TrackTLA%, please update the config.ini file and run again. `n `n You should have something like this under the [IR] section: `n[IR]`n %TrackTLA%=Track Name
 		ExitApp
 		}
-	StringReplace, BUFFER, BUFFER, %A_SPACE%, _, All
-	FileMove, %A_WorkingDir%\%A_LoopFileName%, %A_WorkingDir%\%BUFFER%%DateMon%%DateDay%%Options_Year%-li.pdf, 1
-		If Errorlevel
-		{
+	StringReplace, TrackName, TrackName, %A_SPACE%, _, All
+	FileMove, %A_ScriptDir%\%A_LoopFileName%, %A_ScriptDir%\%TrackName%%RE_Ireland2%%RE_Ireland3%%RE_Ireland3%-li.pdf, 1
+		If (Errorlevel) {
 		Msgbox, There was a problem renaming the %A_LoopFileName% file. Permissions\FileInUse
 		}
 	}
 }
 
 ;### GREAT BRITAIN---------------------------------------------
-Loop, %A_WorkingDir%\*.pdf
+Loop, %A_ScriptDir%\*.pdf
 {
 ;StringLen, FileNameLength, A_LoopFileName
 	;Is this track GB? They all have "_INTER" in the name and are longer then 23 characters.
-	regexmatch(A_LoopFileName, "(\D+)\(D\)_INTER\.", RE_GB_FileName)
-	If (FileNameLength >= 23 && FileNameLength < 26 && InStr(A_LoopFileName, "_INTER.pdf") )
-	{
-	;Pull date as three separate variables
-	regexmatch(A_LoopFileName, "(\d\d\d\d)(\d\d)(\d\d)..\(D\)_INTER\.", RE_Date)
-		If FileNameLength = 23
-		{
-		TrimDateRight = 15
-		}
-		else
-		{
-		TrimDateRight = 16
-		}
-	StringTrimRight, TrackTLA, A_LoopFileName, 13
-	StringTrimLeft, TrackTLA, TrackTLA, 8
-	StringTrimRight, DateBoth, A_LoopFileName, %TrimDateRight%
-	StringTrimLeft, DateBoth, DateBoth, 4
-	StringTrimRight, DateMon, DateBoth, 2
-	StringTrimLeft, DateDay, DateBoth, 2
-	;TrackTLA now has tracks abbreviation, find a way to do that.
-	;"The value in the variable named Var is " . Var
-	
-	BUFFER := GB_%TrackTLA%
-		if BUFFER = 
-		{
+	regexmatch(A_LoopFileName, "(\d\d\d\d)(\d\d)(\d\d)(\D+)\(D\)_INTER\.", RE_GB)
+	If (RE_GB1 != "") {
+	TrackTLA := RE_Ireland
+	TrackName := GB_%TrackTLA%
+		if (TrackName = ) {
 		Msgbox, There was no corresponding Great Britain Track found for %TrackTLA%, please update the config.ini file and run again. `n `n You should have something like this under the [GB] section: `n[GB]`n %TrackTLA%=Track Name
 		ExitApp
 		}
-	StringReplace, BUFFER, BUFFER, %A_SPACE%, _, All
-	FileMove, %A_WorkingDir%\%A_LoopFileName%, %A_WorkingDir%\%BUFFER%%DateMon%%DateDay%%Options_Year%-li.pdf, 1
-		If Errorlevel
-		{
+	StringReplace, TrackName, TrackName, %A_SPACE%, _, All
+	FileMove, %A_ScriptDir%\%A_LoopFileName%, %A_ScriptDir%\%TrackName%%RE_GB2%%RE_GB3%%RE_GB3%-li.pdf, 1
+		If (Errorlevel) {
 		Msgbox, There was a problem renaming the %A_LoopFileName% file. Permissions\FileInUse
 		}
 	}
 }
-
 
 
 FileList =  ; Initialize to be blank.
@@ -140,7 +90,7 @@ InputBox, Weekday , Weekday name, %A_Tab%%A_Space%%A_Space%%A_Space%%A_Space%%A_
 FileAppend,
 (
 -=TVG 3=---------------------
-), %A_WorkingDir%\html.txt
+), %A_ScriptDir%\html.txt
 InsertBlank(void)
 
 FileAppend,
@@ -148,12 +98,12 @@ FileAppend,
 
       Australia
 
-), %A_WorkingDir%\html.txt
+), %A_ScriptDir%\html.txt
 
 
 InsertBlank(void)
 
-Loop, %A_WorkingDir%\*.pdf
+Loop, %A_ScriptDir%\*.pdf
 {
 
 StringTrimRight, Trackname, A_LoopFileName, 13
@@ -164,7 +114,7 @@ StringTrimRight, Trackname, A_LoopFileName, 13
 	(
 	<a href="/forms/%A_LoopFileName%" target="_blank">%Weekday% PPs</a><br />
 	
-	), %A_WorkingDir%\html.txt
+	), %A_ScriptDir%\html.txt
 	}
 
 }
@@ -177,11 +127,11 @@ FileAppend,
 
       Great Britian\Ireland
 
-), %A_WorkingDir%\html.txt
+), %A_ScriptDir%\html.txt
 
 InsertBlank(void)
 
-Loop, %A_WorkingDir%\*.pdf
+Loop, %A_ScriptDir%\*.pdf
 {
 IfInString, A_LoopFileName, Aus
 	{
@@ -195,13 +145,13 @@ FileAppend,
 (
 <a href="/forms/%A_LoopFileNameNoSpace%" target="_blank">%Trackname%, %Weekday% PPs</a><br />
 
-), %A_WorkingDir%\html.txt
+), %A_ScriptDir%\html.txt
 
 }
 FileAppend,
 (
 <br \>
-), %A_WorkingDir%\html.txt
+), %A_ScriptDir%\html.txt
 
 
 InsertBlank(void)
@@ -216,7 +166,7 @@ FileAppend,
 (
 -=TVG 2=---------------------
 
-), %A_WorkingDir%\html.txt
+), %A_ScriptDir%\html.txt
 
 
 FileAppend,
@@ -224,12 +174,12 @@ FileAppend,
 
       Australia
 
-), %A_WorkingDir%\html.txt
+), %A_ScriptDir%\html.txt
 
 
 InsertBlank(void)
 
-Loop, %A_WorkingDir%\*.pdf
+Loop, %A_ScriptDir%\*.pdf
 {
 
 StringTrimRight, Trackname, A_LoopFileName, 13
@@ -240,7 +190,7 @@ StringReplace, TrackName, TrackName, _, %A_SPACE%, All
 	(
 	<a href="https://www.tvg.com/forms/%A_LoopFileName%" target="_blank">%Weekday% PPs</a><br />
 	
-	), %A_WorkingDir%\html.txt
+	), %A_ScriptDir%\html.txt
 	}
 
 }
@@ -253,11 +203,11 @@ FileAppend,
 
       Great Britian\Ireland
 
-), %A_WorkingDir%\html.txt
+), %A_ScriptDir%\html.txt
 
 InsertBlank(void)
 
-Loop, %A_WorkingDir%\*.pdf
+Loop, %A_ScriptDir%\*.pdf
 {
 IfInString, A_LoopFileName, Aus
 	{
@@ -271,21 +221,21 @@ FileAppend,
 (
 <a href="https://www.tvg.com/forms/%A_LoopFileNameNoSpace%" target="_blank">%Trackname%, %Weekday% PPs</a><br />
 
-), %A_WorkingDir%\html.txt
+), %A_ScriptDir%\html.txt
 
 }
 FileAppend,
 (
 <br \>
-), %A_WorkingDir%\html.txt
+), %A_ScriptDir%\html.txt
 
 
 
 ;Ok we have everything done, just need to remove all spaces from all pdf filenames
-Loop, %A_WorkingDir%\*.pdf
+Loop, %A_ScriptDir%\*.pdf
 {
 StringReplace, A_LoopFileNameNoSpace, A_LoopFileName, %A_SPACE%, , All
-FileMove, %A_WorkingDir%\%A_LoopFileName%, %A_WorkingDir%\%A_LoopFileNameNoSpace%, 1
+FileMove, %A_ScriptDir%\%A_LoopFileName%, %A_ScriptDir%\%A_LoopFileNameNoSpace%, 1
 	If Errorlevel
 	{
 	Msgbox, There was a problem removing spaces from the %A_LoopFileName% file. Permissions\Duplicate\Unknown
@@ -309,7 +259,7 @@ InsertTitle(Text)
 FileAppend,
 (
 %Text%
-), %A_WorkingDir%\html.txt
+), %A_ScriptDir%\html.txt
 }
 return
 
@@ -324,6 +274,6 @@ FileAppend,
 (
 
 
-), %A_WorkingDir%\html.txt
+), %A_ScriptDir%\html.txt
 }
 return
