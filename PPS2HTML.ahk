@@ -42,7 +42,7 @@ Loop, %A_ScriptDir%\*.pdf {
 
 ;### IRELAND---------------------------------------------
 Loop, %A_ScriptDir%\*.pdf {
-	;Is this track IR? They all have "_INTER_IRE" in the name
+	;Is this track Irish? They all have "_INTER_IRE." in the name; EX: 20140526DR(D)_INTER.pdf
 	regexmatch(A_LoopFileName, "(\d\d\d\d)(\d\d)(\d\d)(\D+)\(D\)_INTER_IRE\.", RE_Ireland)
 	If (RE_Ireland1 != "") {
 	TrackTLA := RE_Ireland4
@@ -63,7 +63,7 @@ Loop, %A_ScriptDir%\*.pdf {
 Loop, %A_ScriptDir%\*.pdf
 {
 ;StringLen, FileNameLength, A_LoopFileName
-	;Is this track GB? They all have "_INTER" in the name and are longer then 23 characters.
+	;Is this track Great Britain? They all have "_INTER." in the name; EX: 20140526CTM(D)_INTER.pdf
 	regexmatch(A_LoopFileName, "(\d\d\d\d)(\d\d)(\d\d)(\D+)\(D\)_INTER\.", RE_GB)
 	If (RE_GB1 != "") {
 	TrackTLA := RE_GB4
