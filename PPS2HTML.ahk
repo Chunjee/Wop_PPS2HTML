@@ -1,12 +1,9 @@
-#NoTrayIcon
-#SingleInstance force
 
-#include inireadwrite.ahk
-
+StartUp()
 Version = Version 2.0
-SetWorkingDir %A_ScriptDir%
-Working_Directory = %A_ScriptDir%
 
+;Dependencies
+#include inireadwrite.ahk
 
 ;~~~~~~~~~~~~~~~~~~~~~
 ;StartUp
@@ -293,3 +290,11 @@ FileAppend,
 ), %A_ScriptDir%\html.txt
 }
 return
+
+
+
+StartUp()
+{
+#NoTrayIcon
+#SingleInstance force
+}
