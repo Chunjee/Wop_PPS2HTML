@@ -9,8 +9,17 @@ Version = Version 2.0
 ;StartUp
 ;~~~~~~~~~~~~~~~~~~~~~
 
-;Clear the old html.txt ;add some filesize checking in the future for added safety
-FileDelete, %A_ScriptDir%\html.txt
+;Clear the old html.txt ;added some filesize checking for added safety
+g_HMTLFile = %A_ScriptDir%\html.txt
+	IfExist, %g_HMTLFile%
+	{
+	FileGetSize, HTMLSize , %g_HMTLFile%, M
+		If (HTMLSize <= 1) {
+		FileDelete, %g_HMTLFile%
+		}
+	
+	}
+
 
 
 ;Get Tomorrows name to be used in HTML
@@ -19,10 +28,10 @@ g_WeekdayName+=1, d
 FormatTime, g_WeekdayName,%g_WeekdayName%, dddd
 
 
-
 ;Load the config file and check that it loaded the last line
-INI_Init()
-INI_Load()
+settings = %A_ScriptDir%\config.ini
+INI_Init(settings)
+INI_Load(settings)
 If (Ini_Loaded != 1)
 {
 Msgbox, Citizen! There was a problem reading the config.ini file. PPS2HTML will quit for your protection. (Copy a working replacement config.ini file to the same directory as PPS2HTML)
