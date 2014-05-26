@@ -11,14 +11,21 @@ Working_Directory = %A_ScriptDir%
 ;~~~~~~~~~~~~~~~~~~~~~
 ;StartUp
 ;~~~~~~~~~~~~~~~~~~~~~
+
+;Clear the old html.txt ;add some filesize checking in the future for added safety
 FileDelete, %A_ScriptDir%\html.txt
-Day:= %A_Now%
-Day+=1, d
-FormatTime, Day,%Day%, dddd
+
+
+;Get Tomorrows name to be used in HTML
+g_WeekdayName:= %A_Now%
+g_WeekdayName+=1, d
+FormatTime, g_WeekdayName,%g_WeekdayName%, dddd
+
+
+
+;Load the config file and check that it loaded the last line
 INI_Init()
 INI_Load()
-
-
 If (Ini_Loaded != 1)
 {
 Msgbox, Citizen! There was a problem reading the config.ini file. PPS2HTML will quit for your protection. (Copy a working replacement config.ini file to the same directory as PPS2HTML)
@@ -33,7 +40,7 @@ Loop, %A_ScriptDir%\*.pdf {
 	;Is this track Aus? They all have "ppAB" in the name
 	regexmatch(A_LoopFileName, "ppAB(\d\d)(\d\d)\.", RE_Aus)
 	If (RE_Aus1 != "") {
-	FileMove, %A_ScriptDir%\%A_LoopFileName%, %A_ScriptDir%\Australia%RE_Aus1%%RE_Aus2%%Options_Year%-li.pdf, 1
+	FileMove, %A_ScriptDir%\%A_LoopFileName%, %A_ScriptDir%\Australia20%Options_Year%%RE_Aus1%%RE_Aus2%-li.pdf, 1
 		If Errorlevel {
 		Msgbox, There was a problem renaming the %A_LoopFileName% file. Permissions/FileInUse
 		}
@@ -52,7 +59,7 @@ Loop, %A_ScriptDir%\*.pdf {
 		ExitApp
 		}
 	StringReplace, TrackName, TrackName, %A_SPACE%, _, All
-	FileMove, %A_ScriptDir%\%A_LoopFileName%, %A_ScriptDir%\%TrackName%%RE_Ireland2%%RE_Ireland3%%RE_Ireland1%-li.pdf, 1
+	FileMove, %A_ScriptDir%\%A_LoopFileName%, %A_ScriptDir%\%TrackName%%RE_Ireland1%%RE_Ireland2%%RE_Ireland3%-li.pdf, 1
 		If (Errorlevel) {
 		Msgbox, There was a problem renaming the %A_LoopFileName% file. Permissions\FileInUse
 		}
@@ -63,7 +70,7 @@ Loop, %A_ScriptDir%\*.pdf {
 Loop, %A_ScriptDir%\*.pdf
 {
 ;StringLen, FileNameLength, A_LoopFileName
-	;Is this track Great Britain? They all have "_INTER." in the name; EX: 20140526CTM(D)_INTER.pdf
+	;Is this track Great Britain? They all have "_INTER." in the name; EX: 20140526LIN(D)_INTER.pdf
 	regexmatch(A_LoopFileName, "(\d\d\d\d)(\d\d)(\d\d)(\D+)\(D\)_INTER\.", RE_GB)
 	If (RE_GB1 != "") {
 	TrackTLA := RE_GB4
@@ -73,7 +80,7 @@ Loop, %A_ScriptDir%\*.pdf
 		ExitApp
 		}
 	StringReplace, TrackName, TrackName, %A_SPACE%, _, All
-	FileMove, %A_ScriptDir%\%A_LoopFileName%, %A_ScriptDir%\%TrackName%%RE_GB2%%RE_GB3%%RE_GB1%-li.pdf, 1
+	FileMove, %A_ScriptDir%\%A_LoopFileName%, %A_ScriptDir%\%TrackName%%RE_GB1%%RE_GB2%%RE_GB3%-li.pdf, 1
 		If (Errorlevel) {
 		Msgbox, There was a problem renaming the %A_LoopFileName% file. Permissions\FileInUse
 		}
@@ -81,16 +88,19 @@ Loop, %A_ScriptDir%\*.pdf
 }
 
 
-FileList =  ; Initialize to be blank.
-InputBox, Weekday , Weekday name, %A_Tab%%A_Space%%A_Space%%A_Space%%A_Space%%A_Space% %Version%, , 180, 120, X, Y, , , %Day%
-;InputBox, Weekday, Weekday name, blank, , 200, 100
 
+;Ask user to confirm weekday name
+InputBox, g_WeekdayName , Weekday name, %A_Tab%%A_Space%%A_Space%%A_Space%%A_Space%%A_Space% %Version%, , 180, 120, X, Y, , , %g_WeekdayName%
+
+
+;Label TVG3 Section of HTML
 FileAppend,
 (
 -=TVG 3=---------------------
 ), %A_ScriptDir%\html.txt
 InsertBlank(void)
 
+;Label Australia Section of HTML
 FileAppend,
 (
 
@@ -101,16 +111,18 @@ FileAppend,
 
 InsertBlank(void)
 
+
+;Loop for all Australia pdf files
 Loop, %A_ScriptDir%\*.pdf
 {
 
 StringTrimRight, Trackname, A_LoopFileName, 13
-;StringReplace, Trackname, Trackname1, %A_SPACE%, , All
 	IfInString, A_LoopFileName, Austr
 	{
+	g_FinalWeekdayName := Fn_GetWeekName(A_LoopFileName)
 	FileAppend,
 	(
-	<a href="/forms/%A_LoopFileName%" target="_blank">%Weekday% PPs</a><br />
+	<a href="/forms/%A_LoopFileName%" target="_blank">%g_FinalWeekdayName% PPs</a><br />
 	
 	), %A_ScriptDir%\html.txt
 	}
@@ -120,6 +132,9 @@ StringTrimRight, Trackname, A_LoopFileName, 13
 
 InsertBlank(void)
 InsertBlank(void)
+
+
+;Label Australia Section of HTML
 FileAppend,
 (
 
@@ -129,6 +144,8 @@ FileAppend,
 
 InsertBlank(void)
 
+
+;Loop for all GB pdf files
 Loop, %A_ScriptDir%\*.pdf
 {
 IfInString, A_LoopFileName, Aus
@@ -139,19 +156,23 @@ StringTrimRight, Trackname, A_LoopFileName, 15
 StringReplace, TrackName, TrackName, _, %A_SPACE%, All
 ;take space out of FileName and put into a new variable so that the html link will match the no space filename
 StringReplace, A_LoopFileNameNoSpace, A_LoopFileName, %A_SPACE%, , All
+g_FinalWeekdayName := Fn_GetWeekName(A_LoopFileName)
 FileAppend,
 (
-<a href="/forms/%A_LoopFileNameNoSpace%" target="_blank">%Trackname%, %Weekday% PPs</a><br />
+<a href="/forms/%A_LoopFileNameNoSpace%" target="_blank">%Trackname%, %g_FinalWeekdayName% PPs</a><br />
 
 ), %A_ScriptDir%\html.txt
 
 }
+
+;Add trailing <br>
 FileAppend,
 (
 <br \>
 ), %A_ScriptDir%\html.txt
 
 
+;Insert Blank area for separation between TVG3 and TVG2
 InsertBlank(void)
 InsertBlank(void)
 InsertBlank(void)
@@ -160,19 +181,25 @@ InsertBlank(void)
 InsertBlank(void)
 InsertBlank(void)
 
+;Label for TVG2
 FileAppend, -=TVG 2=---------------------`n, %A_ScriptDir%\html.txt
 FileAppend,`n      Australia`n, %A_ScriptDir%\html.txt
 
 
 InsertBlank(void)
 
+
+
+
+
 Loop, %A_ScriptDir%\*.pdf {
 
 StringTrimRight, Trackname, A_LoopFileName, 13
 StringReplace, TrackName, TrackName, _, %A_SPACE%, All
-	IfInString, A_LoopFileName, Austr
+	IfInString, A_LoopFileName, Australia
 	{
-	FileAppend,<a href="https://www.tvg.com/forms/%A_LoopFileName%" target="_blank">%Weekday% PPs</a><br />`n, %A_ScriptDir%\html.txt
+	g_FinalWeekdayName := Fn_GetWeekName(A_LoopFileName)
+	FileAppend,<a href="https://www.tvg.com/forms/%A_LoopFileName%" target="_blank">%g_FinalWeekdayName% PPs</a><br />`n, %A_ScriptDir%\html.txt
 	}
 }
 
@@ -189,7 +216,7 @@ FileAppend,
 InsertBlank(void)
 
 Loop, %A_ScriptDir%\*.pdf {
-	IfInString, A_LoopFileName, Aus
+	IfInString, A_LoopFileName, Australia
 	{
 	Continue
 	}
@@ -197,9 +224,10 @@ StringTrimRight, Trackname, A_LoopFileName, 15
 StringReplace, TrackName, TrackName, _, %A_SPACE%, All
 ;take space out of FileName and put into a new variable so that the html link will match the no space filename
 StringReplace, A_LoopFileNameNoSpace, A_LoopFileName, %A_SPACE%, , All
+g_FinalWeekdayName := Fn_GetWeekName(A_LoopFileName)
 FileAppend,
 (
-<a href="https://www.tvg.com/forms/%A_LoopFileNameNoSpace%" target="_blank">%Trackname%, %Weekday% PPs</a><br />`n
+<a href="https://www.tvg.com/forms/%A_LoopFileNameNoSpace%" target="_blank">%Trackname%, %g_FinalWeekdayName% PPs</a><br />`n
 ), %A_ScriptDir%\html.txt
 }
 FileAppend,<br \>, %A_ScriptDir%\html.txt
@@ -215,8 +243,6 @@ FileMove, %A_ScriptDir%\%A_LoopFileName%, %A_ScriptDir%\%A_LoopFileNameNoSpace%,
 	}
 }
 
-
-
 ExitApp
 
 
@@ -226,6 +252,28 @@ ExitApp
 ;\--\--\--\--\--\--\--\--\--\--\--\--\--\--\--\--\--\--\--\--\--\
 ;Functions
 ;\--\--\--\--\--\--\--\--\--\--\--\--\--\--\--\--\--\--\--\--\--\
+
+
+;Gets the timestamp out of a filename and converts it into a full day of the week name
+Fn_GetWeekName(para_filename) 
+{
+global g_WeekdayName
+
+regexmatch(para_filename, "\D+(\d+)-li.pdf", RE_TimeStamp)
+	If (RE_TimeStamp1 != "") {
+	;dddd corresponds to Monday for example
+	FormatTime, l_WeekdayName , %RE_TimeStamp1%, dddd
+	}
+	If (l_WeekdayName != "") {
+	Return l_WeekdayName
+	} 
+	Else {
+	;Return the existing day name if no new one was found
+	Return g_WeekdayName
+	}
+}
+
+
 
 InsertTitle(Text) {
 FileAppend, %Text%`n, %A_ScriptDir%\html.txt
