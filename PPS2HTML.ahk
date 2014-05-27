@@ -59,41 +59,24 @@ Loop, %A_ScriptDir%\*.pdf {
 }
 
 
-;### IRELAND---------------------------------------------
+
+
+;### Experimental All Simo Central Renaming----------------
 Loop, %A_ScriptDir%\*.pdf {
-	;Is this track Irish? They all have "_INTER_IRE." in the name; EX: 20140526DR(D)_INTER.pdf
-	regexmatch(A_LoopFileName, "(\d\d\d\d)(\d\d)(\d\d)(\D+)\(D\)_INTER_IRE\.", RE_Ireland)
-	If (RE_Ireland1 != "") {
-	TrackTLA := RE_Ireland4
-	TrackName := IR_%TrackTLA%
+	;Is this track from Simo Central? They all have "_INTER_IRE." in the name; EX: 20140526DR(D)_INTER.pdf
+	regexmatch(A_LoopFileName, "(\d\d\d\d)(\d\d)(\d\d)(\D+)\(D\)_INTER", RE_SimoCentralFile)
+	If (RE_SimoCentralFile1 != "") {
+	TrackTLA := RE_SimoCentralFile4
+	Ini_Key := Fn_FindTrackIniKey(TrackTLA)
+	TrackName := %Ini_Key%_%TrackTLA%
+	StringReplace, TrackName, TrackName, %A_SPACE%, _, All
+	
 		If (TrackName = "") {
-		Msgbox, There was no corresponding Ireland Track found for %TrackTLA%, please update the config.ini file and run again. `n `n You should have something like this under the [IR] section: `n[IR]`n %TrackTLA%=Track Name
+		Msgbox, There was no corresponding track found for %TrackTLA%, please update the config.ini file and run again. `n `n You should have something like this: `n[Key]`n %TrackTLA%=Track Name
 		ExitApp
 		}
-	StringReplace, TrackName, TrackName, %A_SPACE%, _, All
-	FileMove, %A_ScriptDir%\%A_LoopFileName%, %A_ScriptDir%\%TrackName%%RE_Ireland1%%RE_Ireland2%%RE_Ireland3%-li.pdf, 1
-		If (Errorlevel) {
-		Msgbox, There was a problem renaming the %A_LoopFileName% file. Permissions\FileInUse
-		}
-	}
-}
-
-
-;### GREAT BRITAIN---------------------------------------------
-Loop, %A_ScriptDir%\*.pdf
-{
-;StringLen, FileNameLength, A_LoopFileName
-	;Is this track Great Britain? They all have "_INTER." in the name; EX: 20140526LIN(D)_INTER.pdf
-	regexmatch(A_LoopFileName, "(\d\d\d\d)(\d\d)(\d\d)(\D+)\(D\)_INTER\.", RE_GB)
-	If (RE_GB1 != "") {
-	TrackTLA := RE_GB4
-	TrackName := GB_%TrackTLA%
-		if (TrackName = "") {
-		Msgbox, There was no corresponding Great Britain Track found for %TrackTLA%, please update the config.ini file and run again. `n `n You should have something like this under the [GB] section: `n[GB]`n %TrackTLA%=Track Name
-		ExitApp
-		}
-	StringReplace, TrackName, TrackName, %A_SPACE%, _, All
-	FileMove, %A_ScriptDir%\%A_LoopFileName%, %A_ScriptDir%\%TrackName%%RE_GB1%%RE_GB2%%RE_GB3%-li.pdf, 1
+	
+	FileMove, %A_ScriptDir%\%A_LoopFileName%, %A_ScriptDir%\%TrackName%%RE_SimoCentralFile1%%RE_SimoCentralFile2%%RE_SimoCentralFile3%-li.pdf, 1
 		If (Errorlevel) {
 		Msgbox, There was a problem renaming the %A_LoopFileName% file. Permissions\FileInUse
 		}
@@ -104,9 +87,6 @@ Loop, %A_ScriptDir%\*.pdf
 
 ;Ask user to confirm weekday name
 InputBox, g_WeekdayName , Weekday name, %A_Tab%%A_Space%%A_Space%%A_Space%%A_Space%%A_Space% %Version%, , 180, 120, X, Y, , , %g_WeekdayName%
-
-
-
 
 
 
@@ -299,7 +279,26 @@ regexmatch(para_filename, "\D+(\d+)-li.pdf", RE_TimeStamp)
 	}
 }
 
-
+Fn_FindTrackIniKey(para_TrackCode)
+{
+	Loop, Read, %A_ScriptDir%\config.ini 
+	{
+		;Remember the INI key value for each section until a match has been found
+		IfInString, A_LoopReadLine, ]
+		{
+		l_CurrentIniKey = %A_LoopReadLine%
+		}
+		
+		;Cut each track line into a psudo array and see if it matches the parameter track code
+		StringSplit, ConfigArray, A_LoopReadLine, =,
+		If (ConfigArray1 = para_TrackCode) {
+		;Match found, remove brackets from current ini key and send back out of function
+		StringReplace, l_CurrentIniKey, l_CurrentIniKey, [,,
+		StringReplace, l_CurrentIniKey, l_CurrentIniKey, ],,
+		Return %l_CurrentIniKey%
+		}
+	}
+}
 
 InsertTitle(Text) {
 FileAppend, %Text%`n, %A_ScriptDir%\html.txt
