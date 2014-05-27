@@ -30,8 +30,8 @@ FormatTime, g_WeekdayName,%g_WeekdayName%, dddd
 
 ;Load the config file and check that it loaded the last line
 settings = %A_ScriptDir%\config.ini
-INI_Init(settings)
-INI_Load(settings)
+Fn_InitializeIni(settings)
+Fn_LoadIni(settings)
 If (Ini_Loaded != 1)
 {
 Msgbox, Citizen! There was a problem reading the config.ini file. PPS2HTML will quit for your protection. (Copy a working replacement config.ini file to the same directory as PPS2HTML)
