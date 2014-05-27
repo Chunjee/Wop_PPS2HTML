@@ -12,7 +12,7 @@ StartUp()
 Version = Version 2.0
 
 ;Dependencies
-#include inireadwrite.ahk
+#include inireadwrite
 
 ;/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\
 ; StartUp
@@ -74,18 +74,26 @@ Loop, %A_ScriptDir%\*.pdf {
 Loop, %A_ScriptDir%\*.pdf {
 	;Is this track from Simo Central? They all have "_INTER_IRE." in the name; EX: 20140526DR(D)_INTER.pdf
 	regexmatch(A_LoopFileName, "(\d\d\d\d)(\d\d)(\d\d)(\D+)\(D\)_INTER", RE_SimoCentralFile)
+	;RE_1 is 2014; RE_2 is month; RE_3 is day; RE_4 is track code, usually 2 or 3 letters.
+	
+	
 	If (RE_SimoCentralFile1 != "") {
+	;If RegEx was a successful match, Find the Ini_[Key] in config.ini
 	TrackTLA := RE_SimoCentralFile4
 	Ini_Key := Fn_FindTrackIniKey(TrackTLA)
+	
+	;Now Trackname will be 'Warwick' in the case of [GB]_WAR
 	TrackName := %Ini_Key%_%TrackTLA%
 	StringReplace, TrackName, TrackName, %A_SPACE%, _, All
 	
+		;If [Key]_TLA has no associated track; tell user and exit
 		If (TrackName = "") {
 		Msgbox, There was no corresponding track found for %TrackTLA%, please update the config.ini file and run again. `n `n You should have something like this: `n[Key]`n %TrackTLA%=Track Name
 		ExitApp
 		}
-	
+	;Otherwise move file with new name; overwriting if necessary
 	FileMove, %A_ScriptDir%\%A_LoopFileName%, %A_ScriptDir%\%TrackName%%RE_SimoCentralFile1%%RE_SimoCentralFile2%%RE_SimoCentralFile3%-li.pdf, 1
+		;If the filemove was unsuccessful for any reason, tell user
 		If (Errorlevel) {
 		Msgbox, There was a problem renaming the %A_LoopFileName% file. Permissions\FileInUse
 		}
@@ -107,24 +115,18 @@ InputBox, g_WeekdayName , Weekday name, %A_Tab%%A_Space%%A_Space%%A_Space%%A_Spa
 
 
 
-
+;~~~~~~~~~~~~~~~~~~~~~
+; TVG3 HTML
+;~~~~~~~~~~~~~~~~~~~~~
 ;Label TVG3 Section of HTML
 FileAppend,
 (
 -=TVG 3=---------------------
 ), %A_ScriptDir%\html.txt
-InsertBlank(void)
-
+Fn_InsertBlank(void)
 ;Label Australia Section of HTML
-FileAppend,
-(
-
-      Australia
-
-), %A_ScriptDir%\html.txt
-
-
-InsertBlank(void)
+FileAppend,`n      Australia`n, %A_ScriptDir%\html.txt
+Fn_InsertBlank(void)
 
 
 ;Loop for all Australia pdf files
@@ -145,22 +147,14 @@ StringTrimRight, Trackname, A_LoopFileName, 13
 }
 
 
-InsertBlank(void)
-InsertBlank(void)
+Fn_InsertBlank(void)
+Fn_InsertBlank(void)
+;Label GB/IR Section of HTML
+FileAppend,`n      Great Britain\Ireland`n, %A_ScriptDir%\html.txt
+Fn_InsertBlank(void)
 
 
-;Label Australia Section of HTML
-FileAppend,
-(
-
-      Great Britain\Ireland
-
-), %A_ScriptDir%\html.txt
-
-InsertBlank(void)
-
-
-;Loop for all GB pdf files
+;Loop for all GB/IR pdf files
 Loop, %A_ScriptDir%\*.pdf
 {
 IfInString, A_LoopFileName, Aus
@@ -188,25 +182,26 @@ FileAppend,
 
 
 ;Insert Blank area for separation between TVG3 and TVG2
-InsertBlank(void)
-InsertBlank(void)
-InsertBlank(void)
-InsertBlank(void)
-InsertBlank(void)
-InsertBlank(void)
-InsertBlank(void)
+Fn_InsertBlank(void)
+Fn_InsertBlank(void)
+Fn_InsertBlank(void)
+Fn_InsertBlank(void)
+Fn_InsertBlank(void)
+Fn_InsertBlank(void)
+Fn_InsertBlank(void)
 
+
+;~~~~~~~~~~~~~~~~~~~~~
+; TVG2 HTML
+;~~~~~~~~~~~~~~~~~~~~~
 ;Label for TVG2
-FileAppend, -=TVG 2=---------------------`n, %A_ScriptDir%\html.txt
+LineText = -=TVG 2=---------------------
+Fn_InsertText(LineText)
 FileAppend,`n      Australia`n, %A_ScriptDir%\html.txt
+Fn_InsertBlank(void)
 
 
-InsertBlank(void)
-
-
-
-
-
+;Loop for all Australia pdf files
 Loop, %A_ScriptDir%\*.pdf {
 
 StringTrimRight, Trackname, A_LoopFileName, 13
@@ -219,17 +214,13 @@ StringReplace, TrackName, TrackName, _, %A_SPACE%, All
 }
 
 
-InsertBlank(void)
-InsertBlank(void)
-FileAppend,
-(
+Fn_InsertBlank(void)
+Fn_InsertBlank(void)
+FileAppend,`n      Great Britain\Ireland`n, %A_ScriptDir%\html.txt
+Fn_InsertBlank(void)
 
-      Great Britian\Ireland
 
-), %A_ScriptDir%\html.txt
-
-InsertBlank(void)
-
+;Loop for all GB/IR pdf files
 Loop, %A_ScriptDir%\*.pdf {
 	IfInString, A_LoopFileName, Australia
 	{
@@ -249,7 +240,7 @@ FileAppend,<br \>, %A_ScriptDir%\html.txt
 
 
 
-;Ok we have everything done, just need to remove all spaces from all pdf filenames
+;Ok we have everything done, just need to remove all spaces from all pdf filenames; spaces should not exist anyway at this point.
 Loop, %A_ScriptDir%\*.pdf {
 StringReplace, A_LoopFileNameNoSpace, A_LoopFileName, %A_SPACE%, , All
 FileMove, %A_ScriptDir%\%A_LoopFileName%, %A_ScriptDir%\%A_LoopFileNameNoSpace%, 1
@@ -309,27 +300,22 @@ Fn_FindTrackIniKey(para_TrackCode)
 	}
 }
 
-InsertTitle(Text) {
-FileAppend, %Text%`n, %A_ScriptDir%\html.txt
-}
-return
 
-F6::
-ListVars
-return
-
-
-InsertBlank(void) {
-FileAppend,
-(
-
-
-), %A_ScriptDir%\html.txt
+;This function just inserts a line of text
+Fn_InsertText(para_Text) {
+FileAppend, %para_Text%`n, %A_ScriptDir%\html.txt
 }
 return
 
 
+;This function inserts a blank line. How worthless 
+Fn_InsertBlank(void) {
+FileAppend, `n, %A_ScriptDir%\html.txt
+}
+return
 
+
+;No Tray icon because it takes 2 seconds; Do not allow running more then one instance at a time
 StartUp()
 {
 #NoTrayIcon
