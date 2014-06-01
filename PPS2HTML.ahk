@@ -9,7 +9,7 @@
 ;Compile Options
 ;~~~~~~~~~~~~~~~~~~~~~
 StartUp()
-Version = Version 2.0
+Version = Version 1.9
 
 ;Dependencies
 #include inireadwrite
@@ -23,7 +23,7 @@ g_HMTLFile = %A_ScriptDir%\html.txt
 	IfExist, %g_HMTLFile%
 	{
 	FileGetSize, HTMLSize , %g_HMTLFile%, M
-		If (HTMLSize <= 1) {
+		If (HTMLSize <= 2) {
 		FileDelete, %g_HMTLFile%
 		}
 	
@@ -57,7 +57,7 @@ ExitApp
 
 ;### AUSTRALIA--------------------------------------------
 Loop, %A_ScriptDir%\*.pdf {
-	;Is this track Aus? They all have "ppAB" in the name
+	;Is this track Aus? They all have "ppAB" in the name; EX: DOOppAB0527.pdf
 	regexmatch(A_LoopFileName, "ppAB(\d\d)(\d\d)\.", RE_Aus)
 	If (RE_Aus1 != "") {
 	FileMove, %A_ScriptDir%\%A_LoopFileName%, %A_ScriptDir%\Australia20%Options_Year%%RE_Aus1%%RE_Aus2%-li.pdf, 1
