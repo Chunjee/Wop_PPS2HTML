@@ -9,7 +9,7 @@
 ;Compile Options
 ;~~~~~~~~~~~~~~~~~~~~~
 StartUp()
-Version = Version 1.9
+Version = Version 1.10
 
 ;Dependencies
 #include inireadwrite
@@ -30,23 +30,21 @@ g_HMTLFile = %A_ScriptDir%\html.txt
 	}
 
 
+;Load the config file and check that it loaded the last line
+settings = %A_ScriptDir%\config.ini
+Fn_InitializeIni(settings)
+Fn_LoadIni(settings)
+	If (Ini_Loaded != 1)
+	{
+	Msgbox, Citizen! There was a problem reading the config.ini file. PPS2HTML will quit for your protection. (Copy a working replacement config.ini file to the same directory as PPS2HTML)
+	ExitApp
+	}
+
 
 ;Get Tomorrows name to be used in HTML
 g_WeekdayName:= %A_Now%
 g_WeekdayName+=1, d
 FormatTime, g_WeekdayName,%g_WeekdayName%, dddd
-
-
-;Load the config file and check that it loaded the last line
-settings = %A_ScriptDir%\config.ini
-Fn_InitializeIni(settings)
-Fn_LoadIni(settings)
-If (Ini_Loaded != 1)
-{
-Msgbox, Citizen! There was a problem reading the config.ini file. PPS2HTML will quit for your protection. (Copy a working replacement config.ini file to the same directory as PPS2HTML)
-ExitApp
-}
-
 
 
 ;/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\
@@ -67,6 +65,17 @@ Loop, %A_ScriptDir%\*.pdf {
 	}
 }
 
+;### NEW ZEALAND--------------------------------------------
+Loop, %A_ScriptDir%\*.pdf {
+	;Is this track Aus? They all have "ppAB" in the name; EX: DOOppAB0527.pdf
+	regexmatch(A_LoopFileName, "NZpp(\d\d)(\d\d)\.", RE_NZ)
+	If (RE_NZ1 != "") {
+	FileMove, %A_ScriptDir%\%A_LoopFileName%, %A_ScriptDir%\NewZealand20%Options_Year%%RE_NZ1%%RE_NZ2%-li.pdf, 1
+		If Errorlevel {
+		Msgbox, There was a problem renaming the %A_LoopFileName% file. Permissions/FileInUse
+		}
+	}
+}
 
 
 
@@ -133,9 +142,7 @@ Fn_InsertBlank(void)
 Loop, %A_ScriptDir%\*.pdf
 {
 
-StringTrimRight, Trackname, A_LoopFileName, 13
-	IfInString, A_LoopFileName, Austr
-	{
+	If (InStr(A_LoopFileName, "Australia") || InStr(A_LoopFileName, "NewZealand")) {
 	g_FinalWeekdayName := Fn_GetWeekName(A_LoopFileName)
 	FileAppend,
 	(
@@ -157,21 +164,21 @@ Fn_InsertBlank(void)
 ;Loop for all GB/IR pdf files
 Loop, %A_ScriptDir%\*.pdf
 {
-IfInString, A_LoopFileName, Aus
-	{
+If (InStr(A_LoopFileName, "Australia") || InStr(A_LoopFileName, "NewZealand")) {
 	Continue
 	}
-StringTrimRight, Trackname, A_LoopFileName, 15
-StringReplace, TrackName, TrackName, _, %A_SPACE%, All
-;take space out of FileName and put into a new variable so that the html link will match the no space filename
-StringReplace, A_LoopFileNameNoSpace, A_LoopFileName, %A_SPACE%, , All
-g_FinalWeekdayName := Fn_GetWeekName(A_LoopFileName)
+regexmatch(A_LoopFileName, "(\D+)\d+-li", RE_TrackName)
+	If (RE_TrackName != "")	{
+	TrackName := RE_TrackName1
+	StringReplace, TrackName, TrackName, _, %A_SPACE%, All
+	StringReplace, A_LoopFileNameNoSpace, A_LoopFileName, %A_SPACE%, , All
+	g_FinalWeekdayName := Fn_GetWeekName(A_LoopFileName)
 FileAppend,
 (
 <a href="/forms/%A_LoopFileNameNoSpace%" target="_blank">%Trackname%, %g_FinalWeekdayName% PPs</a><br />
 
 ), %A_ScriptDir%\html.txt
-
+	}
 }
 
 ;Add trailing <br>
@@ -204,9 +211,7 @@ Fn_InsertBlank(void)
 ;Loop for all Australia pdf files
 Loop, %A_ScriptDir%\*.pdf {
 
-StringTrimRight, Trackname, A_LoopFileName, 13
-StringReplace, TrackName, TrackName, _, %A_SPACE%, All
-	IfInString, A_LoopFileName, Australia
+	If (InStr(A_LoopFileName, "Australia") || InStr(A_LoopFileName, "NewZealand"))
 	{
 	g_FinalWeekdayName := Fn_GetWeekName(A_LoopFileName)
 	FileAppend,<a href="https://www.tvg.com/forms/%A_LoopFileName%" target="_blank">%g_FinalWeekdayName% PPs</a><br />`n, %A_ScriptDir%\html.txt
@@ -222,20 +227,28 @@ Fn_InsertBlank(void)
 
 ;Loop for all GB/IR pdf files
 Loop, %A_ScriptDir%\*.pdf {
-	IfInString, A_LoopFileName, Australia
-	{
+	If (InStr(A_LoopFileName, "Australia") || InStr(A_LoopFileName, "NewZealand")) {
 	Continue
 	}
-StringTrimRight, Trackname, A_LoopFileName, 15
-StringReplace, TrackName, TrackName, _, %A_SPACE%, All
-;take space out of FileName and put into a new variable so that the html link will match the no space filename
-StringReplace, A_LoopFileNameNoSpace, A_LoopFileName, %A_SPACE%, , All
-g_FinalWeekdayName := Fn_GetWeekName(A_LoopFileName)
-FileAppend,
+	
+	
+	regexmatch(A_LoopFileName, "(\D+)\d+-li", RE_TrackName)
+	If (RE_TrackName != "")	{
+	TrackName := RE_TrackName1
+	StringReplace, TrackName, TrackName, _, %A_SPACE%, All
+	StringReplace, A_LoopFileNameNoSpace, A_LoopFileName, %A_SPACE%, , All
+	g_FinalWeekdayName := Fn_GetWeekName(A_LoopFileName)
+	
+	FileAppend,
 (
 <a href="https://www.tvg.com/forms/%A_LoopFileNameNoSpace%" target="_blank">%Trackname%, %g_FinalWeekdayName% PPs</a><br />`n
 ), %A_ScriptDir%\html.txt
+	}
+
+;take space out of FileName and put into a new variable so that the html link will match the no space filename
+
 }
+
 FileAppend,<br \>, %A_ScriptDir%\html.txt
 
 
