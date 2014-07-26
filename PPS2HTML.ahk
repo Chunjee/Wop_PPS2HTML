@@ -20,7 +20,6 @@ Version = Version 1.10
 
 Sb_GlobalNameSpace()
 
-
 ;Clear the old html.txt ;added some filesize checking for added safety
 g_HMTLFile = %A_ScriptDir%\html.txt
 	IfExist, %g_HMTLFile%
@@ -83,7 +82,7 @@ Loop, %A_ScriptDir%\*.pdf {
 
 
 
-;### Experimental All Simo Central Renaming----------------
+;### All Simo Central Renaming----------------
 Loop, %A_ScriptDir%\*.pdf {
 	;Is this track from Simo Central? They all have "_INTER_IRE." in the name; EX: 20140526DR(D)_INTER.pdf
 	regexmatch(A_LoopFileName, "(\d\d\d\d)(\d\d)(\d\d)(\D+)\(D\)_INTER", RE_SimoCentralFile)
@@ -105,11 +104,13 @@ Loop, %A_ScriptDir%\*.pdf {
 		ExitApp
 		}
 	;Otherwise move file with new name; overwriting if necessary
-	FileMove, %A_ScriptDir%\%A_LoopFileName%, %A_ScriptDir%\%TrackName%%RE_SimoCentralFile1%%RE_SimoCentralFile2%%RE_SimoCentralFile3%-li.pdf, 1
+	The_FileName = %TrackName%%RE_SimoCentralFile1%%RE_SimoCentralFile2%%RE_SimoCentralFile3%-li.pdf
+	FileMove, %A_ScriptDir%\%A_LoopFileName%, %A_ScriptDir%\%The_FileName%, 1
 		;If the filemove was unsuccessful for any reason, tell user
 		If (Errorlevel) {
 		Msgbox, There was a problem renaming the %A_LoopFileName% file. Permissions\FileInUse
 		}
+	Fn_InsertData(Ini_Key, TrackName, The_FileName)
 	}
 }
 
@@ -317,9 +318,14 @@ Fn_FindTrackIniKey(para_TrackCode)
 	}
 }
 
+Fn_InsertData(para_key, para_TrackName, para_FileName) {
+global
 
-Fn_ReplaceString(para_1,para_2,para_String)
-{
+local X := AllTracks_Array.MaxIndex()
+AllTracks_Array[X,2] := 
+}
+
+Fn_ReplaceString(para_1,para_2,para_String) {
 StringReplace, l_Newstring, para_String, %para_1%, %para_2%, All
 Return l_Newstring
 }
@@ -342,13 +348,11 @@ return
 ;\--/--\--/--\--/--\--/--\--/
 
 ;No Tray icon because it takes 2 seconds; Do not allow running more then one instance at a time
-StartUp()
-{
+StartUp() {
 #NoTrayIcon
 #SingleInstance force
 }
 
-Sb_GlobalNameSpace()
-{
-AllTracks_Array := [[x],[y],[z]]
+Sb_GlobalNameSpace() {
+AllTracks_Array := [[x],[y]]
 }
