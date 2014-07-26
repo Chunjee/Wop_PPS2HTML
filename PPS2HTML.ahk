@@ -150,7 +150,7 @@ Loop, %A_ScriptDir%\*.pdf
 	g_FinalWeekdayName := Fn_GetWeekName(A_LoopFileName)
 	FileAppend,
 	(
-	<a href="/forms/%A_LoopFileName%" target="_blank">%g_FinalWeekdayName% PPs</a><br />
+	<a href="[current-domain:forms-url]%A_LoopFileName%" target="_blank">%g_FinalWeekdayName% PPs</a><br />
 	
 	), %A_ScriptDir%\html.txt
 	}
@@ -179,7 +179,7 @@ regexmatch(A_LoopFileName, "(\D+)\d+-li", RE_TrackName)
 	g_FinalWeekdayName := Fn_GetWeekName(A_LoopFileName)
 FileAppend,
 (
-<a href="/forms/%A_LoopFileNameNoSpace%" target="_blank">%Trackname%, %g_FinalWeekdayName% PPs</a><br />
+<a href="[current-domain:forms-url]%A_LoopFileNameNoSpace%" target="_blank">%Trackname%, %g_FinalWeekdayName% PPs</a><br />
 
 ), %A_ScriptDir%\html.txt
 	}
