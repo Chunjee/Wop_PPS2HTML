@@ -18,6 +18,9 @@ Version = Version 1.10
 ; StartUp
 ;\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/
 
+Sb_GlobalNameSpace()
+
+
 ;Clear the old html.txt ;added some filesize checking for added safety
 g_HMTLFile = %A_ScriptDir%\html.txt
 	IfExist, %g_HMTLFile%
@@ -62,12 +65,13 @@ Loop, %A_ScriptDir%\*.pdf {
 		If Errorlevel {
 		Msgbox, There was a problem renaming the %A_LoopFileName% file. Permissions/FileInUse
 		}
+	
 	}
 }
 
 ;### NEW ZEALAND--------------------------------------------
 Loop, %A_ScriptDir%\*.pdf {
-	;Is this track Aus? They all have "ppAB" in the name; EX: DOOppAB0527.pdf
+	;Is this track New Zealand? They all have "NZpp" in the name
 	regexmatch(A_LoopFileName, "NZpp(\d\d)(\d\d)\.", RE_NZ)
 	If (RE_NZ1 != "") {
 	FileMove, %A_ScriptDir%\%A_LoopFileName%, %A_ScriptDir%\NewZealand20%Options_Year%%RE_NZ1%%RE_NZ2%-li.pdf, 1
@@ -261,9 +265,9 @@ FileMove, %A_ScriptDir%\%A_LoopFileName%, %A_ScriptDir%\%A_LoopFileNameNoSpace%,
 	Msgbox, There was a problem removing spaces from the %A_LoopFileName% file. Permissions\Duplicate\Unknown
 	}
 }
-
+ListVars
+Msgbox alf
 ExitApp
-
 
 
 
@@ -314,6 +318,12 @@ Fn_FindTrackIniKey(para_TrackCode)
 }
 
 
+Fn_ReplaceString(para_1,para_2,para_String)
+{
+StringReplace, l_Newstring, para_String, %para_1%, %para_2%, All
+Return l_Newstring
+}
+
 ;This function just inserts a line of text
 Fn_InsertText(para_Text) {
 FileAppend, %para_Text%`n, %A_ScriptDir%\html.txt
@@ -327,10 +337,18 @@ FileAppend, `n, %A_ScriptDir%\html.txt
 }
 return
 
+;/--\--/--\--/--\--/--\--/--\
+; Subroutines
+;\--/--\--/--\--/--\--/--\--/
 
 ;No Tray icon because it takes 2 seconds; Do not allow running more then one instance at a time
 StartUp()
 {
 #NoTrayIcon
 #SingleInstance force
+}
+
+Sb_GlobalNameSpace()
+{
+AllTracks_Array := [[x],[y],[z]]
 }
