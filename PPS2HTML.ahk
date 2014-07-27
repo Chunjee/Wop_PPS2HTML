@@ -121,9 +121,46 @@ InputBox, g_WeekdayName , Weekday name, %A_Tab%%A_Space%%A_Space%%A_Space%%A_Spa
 
 
 
+;/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\
+; New HTML Generation
+;\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/
+
+
+
+
+Fn_Export("GB#IRE")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ExitApp
+
+
+
+
+
 
 ;/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\
-; HTML Generation
+; Old HTML Generation
 ;\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/
 
 
@@ -212,7 +249,7 @@ Fn_InsertText(LineText)
 FileAppend,`n      Australia`n, %A_ScriptDir%\html.txt
 Fn_InsertBlank(void)
 
-
+Fn_Export(para_key)
 ;Loop for all Australia pdf files
 Loop, %A_ScriptDir%\*.pdf {
 
@@ -318,12 +355,46 @@ Fn_FindTrackIniKey(para_TrackCode)
 	}
 }
 
-Fn_InsertData(para_key, para_TrackName, para_FileName) {
+Fn_InsertData(para_key, para_TrackName, para_FileName) 
+{
 global
 
-local X := AllTracks_Array.MaxIndex()
-AllTracks_Array[X,2] := 
+;AllTracks_ArraX := AllTracks_Array.MaxIndex()
+;Msgbox, MAX  IS %X% ; FYI Max will never be blank because it is not created empty
+	If (AllTracks_ArraX = "")
+	{
+	;Array is blank
+	AllTracks_ArraX = 0
+	}
+;AllTracks_Array.Insert(1, para_key, para_TrackName, para_FileName)
+
+AllTracks_Array[X,1] := para_key
+AllTracks_Array[X,2] := para_TrackName
+AllTracks_Array[X,3] := para_FileName
+AllTracks_ArraX += 1
 }
+
+Fn_Export(para_key) {
+global
+
+;local X := AllTracks_Array.MaxIndex()
+	Loop % AllTracks_Array.MaxIndex()
+	{
+	Msgbox, %A_Index% - %para_key%
+		If (AllTracks_Array[A_Index,1] = %para_key%)
+		{
+		l_key := AllTracks_Array[A_Index,1]
+		l_TrackName := AllTracks_Array[A_Index,2]
+		l_FileName := AllTracks_Array[A_Index,3]
+		l_CurrentLine = <a href="[current-domain:forms-url]%l_FileName%" target="_blank">%l_TrackName%, %g_FinalWeekdayName% PPs</a><br />
+		FileAppend, %l_CurrentLine%, %A_ScriptDir%\html.txt
+		Fn_InsertText(l_CurrentLine)
+		}
+	
+	}
+;RemovedValue := Array.Remove(X) ;Prob wont work with multidimensional
+}
+
 
 Fn_ReplaceString(para_1,para_2,para_String) {
 StringReplace, l_Newstring, para_String, %para_1%, %para_2%, All
@@ -334,14 +405,13 @@ Return l_Newstring
 Fn_InsertText(para_Text) {
 FileAppend, %para_Text%`n, %A_ScriptDir%\html.txt
 }
-return
 
 
 ;This function inserts a blank line. How worthless 
 Fn_InsertBlank(void) {
 FileAppend, `n, %A_ScriptDir%\html.txt
 }
-return
+
 
 ;/--\--/--\--/--\--/--\--/--\
 ; Subroutines
@@ -354,5 +424,8 @@ StartUp() {
 }
 
 Sb_GlobalNameSpace() {
+global
+
 AllTracks_Array := [[x],[y]]
+AllTracks_ArraX = 0
 }
