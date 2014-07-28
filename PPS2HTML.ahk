@@ -60,11 +60,12 @@ Loop, %A_ScriptDir%\*.pdf {
 	;Is this track Aus? They all have "ppAB" in the name; EX: DOOppAB0527.pdf
 	regexmatch(A_LoopFileName, "ppAB(\d\d)(\d\d)\.", RE_Aus)
 	If (RE_Aus1 != "") {
-	FileMove, %A_ScriptDir%\%A_LoopFileName%, %A_ScriptDir%\Australia20%Options_Year%%RE_Aus1%%RE_Aus2%-li.pdf, 1
+	The_FileName = Australia20%Options_Year%%RE_Aus1%%RE_Aus2%-li.pdf
+	FileMove, %A_ScriptDir%\%A_LoopFileName%, %A_ScriptDir%\%The_FileName%, 1
 		If Errorlevel {
 		Msgbox, There was a problem renaming the %A_LoopFileName% file. Permissions/FileInUse
 		}
-	
+	Fn_InsertData("Australia", "", The_FileName)
 	}
 }
 
@@ -117,7 +118,7 @@ Loop, %A_ScriptDir%\*.pdf {
 
 
 ;Ask user to confirm weekday name
-InputBox, g_WeekdayName , Weekday name, %A_Tab%%A_Space%%A_Space%%A_Space%%A_Space%%A_Space% %Version%, , 180, 120, X, Y, , , %g_WeekdayName%
+;InputBox, g_WeekdayName , Weekday name, %A_Tab%%A_Space%%A_Space%%A_Space%%A_Space%%A_Space% %Version%, , 180, 120, X, Y, , , %g_WeekdayName%
 
 
 
@@ -126,17 +127,15 @@ InputBox, g_WeekdayName , Weekday name, %A_Tab%%A_Space%%A_Space%%A_Space%%A_Spa
 ;\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/
 
 
-
-
+Fn_Export("Australia")
+Fn_InsertBlank(void)
+Fn_InsertBlank(void)
+Fn_InsertBlank(void)
 Fn_Export("GB#IRE")
-
-
-
-
-
-
-
-
+Fn_InsertBlank(void)
+Fn_InsertBlank(void)
+Fn_InsertBlank(void)
+Fn_Export("South_Africa")
 
 
 
@@ -357,42 +356,52 @@ Fn_FindTrackIniKey(para_TrackCode)
 
 Fn_InsertData(para_key, para_TrackName, para_FileName) 
 {
-global
+Global
 
 ;AllTracks_ArraX := AllTracks_Array.MaxIndex()
 ;Msgbox, MAX  IS %X% ; FYI Max will never be blank because it is not created empty
 	If (AllTracks_ArraX = "")
 	{
 	;Array is blank
-	AllTracks_ArraX = 0
+	AllTracks_ArraX = 1
 	}
 ;AllTracks_Array.Insert(1, para_key, para_TrackName, para_FileName)
-
-AllTracks_Array[X,1] := para_key
-AllTracks_Array[X,2] := para_TrackName
-AllTracks_Array[X,3] := para_FileName
+Msgbox, ------%AllTracks_ArraX% - %para_key%
+AllTracks_Array[AllTracks_ArraX,1] := para_key
+AllTracks_Array[AllTracks_ArraX,2] := para_TrackName
+AllTracks_Array[AllTracks_ArraX,3] := para_FileName
 AllTracks_ArraX += 1
 }
 
 Fn_Export(para_key) {
-global
+Global AllTracks_Array
 
-;local X := AllTracks_Array.MaxIndex()
+;Create HTML Title
+Fn_HTMLTitle(para_key)
+
+	;Read each track in the array and write to HTML if it matches the current key (GB/IR, Australia, etc)
 	Loop % AllTracks_Array.MaxIndex()
 	{
-	Msgbox, %A_Index% - %para_key%
-		If (AllTracks_Array[A_Index,1] = %para_key%)
+		If (para_key = AllTracks_Array[A_Index,1])
 		{
 		l_key := AllTracks_Array[A_Index,1]
 		l_TrackName := AllTracks_Array[A_Index,2]
 		l_FileName := AllTracks_Array[A_Index,3]
-		l_CurrentLine = <a href="[current-domain:forms-url]%l_FileName%" target="_blank">%l_TrackName%, %g_FinalWeekdayName% PPs</a><br />
-		FileAppend, %l_CurrentLine%, %A_ScriptDir%\html.txt
+		l_WeekdayName := Fn_GetWeekName(l_FileName)
+		
+		l_CurrentLine = <a href="[current-domain:forms-url]%l_FileName%" target="_blank">%l_TrackName%, %l_WeekdayName% PPs</a><br />
 		Fn_InsertText(l_CurrentLine)
 		}
 	
 	}
 ;RemovedValue := Array.Remove(X) ;Prob wont work with multidimensional
+}
+
+Fn_HTMLTitle(para_Text) {
+para_Text := Fn_ReplaceString("#", "/", para_Text)
+para_Text := Fn_ReplaceString("_", " ", para_Text)
+l_CurrentLine = <span style="color: #0c9256;"><strong>%para_Text%</strong></span><br />
+Fn_InsertText(l_CurrentLine)
 }
 
 
