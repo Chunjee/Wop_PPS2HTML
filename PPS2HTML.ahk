@@ -366,29 +366,32 @@ Global
 	AllTracks_ArraX = 1
 	}
 ;AllTracks_Array.Insert(1, para_key, para_TrackName, para_FileName)
-Msgbox, ------%AllTracks_ArraX% - %para_key%
-AllTracks_Array[AllTracks_ArraX,1] := para_key
-AllTracks_Array[AllTracks_ArraX,2] := para_TrackName
-AllTracks_Array[AllTracks_ArraX,3] := para_FileName
+;Msgbox, ------%AllTracks_ArraX% - %para_key%
+AllTracks_Array[AllTracks_ArraX,"Key"] := para_key
+AllTracks_Array[AllTracks_ArraX,"TrackName"] := para_TrackName
+AllTracks_Array[AllTracks_ArraX,"FileName"] := para_FileName
+;Msgbox % AllTracks_Array[AllTracks_ArraX,"Key"]
 AllTracks_ArraX += 1
 }
 
 Fn_Export(para_key) {
 Global AllTracks_Array
 
-;Create HTML Title
+;Create HTML Title if 
 Fn_HTMLTitle(para_key)
 
 	;Read each track in the array and write to HTML if it matches the current key (GB/IR, Australia, etc)
 	Loop % AllTracks_Array.MaxIndex()
 	{
-		If (para_key = AllTracks_Array[A_Index,1])
+	Msgbox % para_key . "   " . AllTracks_Array[A_Index,"Key"]
+		If (para_key = AllTracks_Array[A_Index,"Key"] )
 		{
-		l_key := AllTracks_Array[A_Index,1]
-		l_TrackName := AllTracks_Array[A_Index,2]
-		l_FileName := AllTracks_Array[A_Index,3]
+		Msgbox, alf
+		l_key := AllTracks_Array[A_Index,"Key"]
+		l_TrackName := AllTracks_Array[A_Index,"TrackName"]
+		l_FileName := AllTracks_Array[A_Index,"FileName"]
 		l_WeekdayName := Fn_GetWeekName(l_FileName)
-		
+		;Msgbox, %l_FileName%
 		l_CurrentLine = <a href="[current-domain:forms-url]%l_FileName%" target="_blank">%l_TrackName%, %l_WeekdayName% PPs</a><br />
 		Fn_InsertText(l_CurrentLine)
 		}
@@ -435,6 +438,6 @@ StartUp() {
 Sb_GlobalNameSpace() {
 global
 
-AllTracks_Array := [[x],[y]]
+AllTracks_Array := {Key:"", TrackName:"", FileName:""}
 AllTracks_ArraX = 0
 }
