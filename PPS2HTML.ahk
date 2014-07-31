@@ -12,13 +12,19 @@ StartUp()
 Version = Version 1.10
 
 ;Dependencies
-#include inireadwrite
+#Include %A_ScriptDir%\Functions
+#Include inireadwrite
+#Include sort_arrays
+
+#Include util_arrays
 
 ;/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\
 ; StartUp
 ;\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/
 
+;Startup special global variables
 Sb_GlobalNameSpace()
+
 
 ;Clear the old html.txt ;added some filesize checking for added safety
 g_HMTLFile = %A_ScriptDir%\html.txt
@@ -42,11 +48,11 @@ Fn_LoadIni(settings)
 	ExitApp
 	}
 
-
-;Get Tomorrows name to be used in HTML
-g_WeekdayName:= %A_Now%
-g_WeekdayName+=1, d
-FormatTime, g_WeekdayName,%g_WeekdayName%, dddd
+;DEPRECIATED. File will always have a date
+	;Get Tomorrows name to be used in HTML
+	;g_WeekdayName:= %A_Now%
+	;g_WeekdayName+=1, d
+	;FormatTime, g_WeekdayName,%g_WeekdayName%, dddd
 
 
 ;/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\
@@ -60,12 +66,8 @@ Loop, %A_ScriptDir%\*.pdf {
 	;Is this track Aus? They all have "ppAB" in the name; EX: DOOppAB0527.pdf
 	regexmatch(A_LoopFileName, "ppAB(\d\d)(\d\d)\.", RE_Aus)
 	If (RE_Aus1 != "") {
-	The_FileName = Australia20%Options_Year%%RE_Aus1%%RE_Aus2%-li.pdf
-	FileMove, %A_ScriptDir%\%A_LoopFileName%, %A_ScriptDir%\%The_FileName%, 1
-		If Errorlevel {
-		Msgbox, There was a problem renaming the %A_LoopFileName% file. Permissions/FileInUse
-		}
-	Fn_InsertData("Australia", "", The_FileName)
+	The_DateTrack = 20%Options_Year%%RE_Aus1%%RE_Aus2%Australia
+	Fn_InsertData("Australia", "Australia", The_DateTrack, A_LoopFileName)
 	}
 }
 
@@ -74,10 +76,8 @@ Loop, %A_ScriptDir%\*.pdf {
 	;Is this track New Zealand? They all have "NZpp" in the name
 	regexmatch(A_LoopFileName, "NZpp(\d\d)(\d\d)\.", RE_NZ)
 	If (RE_NZ1 != "") {
-	FileMove, %A_ScriptDir%\%A_LoopFileName%, %A_ScriptDir%\NewZealand20%Options_Year%%RE_NZ1%%RE_NZ2%-li.pdf, 1
-		If Errorlevel {
-		Msgbox, There was a problem renaming the %A_LoopFileName% file. Permissions/FileInUse
-		}
+	The_DateTrack = 20%Options_Year%%RE_NZ1%%RE_NZ2%New_Zealand
+	Fn_InsertData("New_Zealand", "New_Zealand", The_DateTrack, A_LoopFileName)
 	}
 }
 
@@ -97,6 +97,9 @@ Loop, %A_ScriptDir%\*.pdf {
 	
 	;Now Trackname will be 'Warwick' in the case of [GB]_WAR
 	TrackName := %Ini_Key%_%TrackTLA%
+	The_DateTrack = %RE_SimoCentralFile1%%RE_SimoCentralFile2%%RE_SimoCentralFile3%%TrackName%
+	Fn_InsertData(Ini_Key, TrackName, The_DateTrack, A_LoopFileName)
+		
 	StringReplace, TrackName, TrackName, %A_SPACE%, _, All
 	
 		;If [Key]_TLA has no associated track; tell user and exit
@@ -104,15 +107,9 @@ Loop, %A_ScriptDir%\*.pdf {
 		Msgbox, There was no corresponding track found for %TrackTLA%, please update the config.ini file and run again. `n `n You should have something like this: `n[Key]`n %TrackTLA%=Track Name
 		ExitApp
 		}
-	;Otherwise move file with new name; overwriting if necessary
-	The_FileName = %TrackName%%RE_SimoCentralFile1%%RE_SimoCentralFile2%%RE_SimoCentralFile3%-li.pdf
-	FileMove, %A_ScriptDir%\%A_LoopFileName%, %A_ScriptDir%\%The_FileName%, 1
-		;If the filemove was unsuccessful for any reason, tell user
-		If (Errorlevel) {
-		Msgbox, There was a problem renaming the %A_LoopFileName% file. Permissions\FileInUse
-		}
-	Fn_InsertData(Ini_Key, TrackName, The_FileName)
+	
 	}
+	
 }
 
 
@@ -127,21 +124,18 @@ Loop, %A_ScriptDir%\*.pdf {
 ;\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/
 
 
+;Sort all Array Content by DateTrack
+Fn_Sort2DArrayFast(AllTracks_Array, "DateTrack")
+
+;Export Each Track type to HTML.txt; also handles renaming files
 Fn_Export("Australia")
-Fn_InsertBlank(void)
-Fn_InsertBlank(void)
-Fn_InsertBlank(void)
+Fn_Export("New_Zealand")
 Fn_Export("GB#IRE")
-Fn_InsertBlank(void)
-Fn_InsertBlank(void)
-Fn_InsertBlank(void)
 Fn_Export("South_Africa")
 
 
-
-
-
-
+;For Debugging. Show contents of the Array 
+;Array_Gui(AllTracks_Array)
 
 
 
@@ -248,7 +242,6 @@ Fn_InsertText(LineText)
 FileAppend,`n      Australia`n, %A_ScriptDir%\html.txt
 Fn_InsertBlank(void)
 
-Fn_Export(para_key)
 ;Loop for all Australia pdf files
 Loop, %A_ScriptDir%\*.pdf {
 
@@ -302,8 +295,8 @@ FileMove, %A_ScriptDir%\%A_LoopFileName%, %A_ScriptDir%\%A_LoopFileNameNoSpace%,
 	Msgbox, There was a problem removing spaces from the %A_LoopFileName% file. Permissions\Duplicate\Unknown
 	}
 }
-ListVars
-Msgbox alf
+
+;Finished, exit
 ExitApp
 
 
@@ -315,23 +308,41 @@ ExitApp
 
 
 ;Gets the timestamp out of a filename and converts it into a full day of the week name
-Fn_GetWeekName(para_filename) 
+Fn_GetWeekName(para_String) ;Example Input: "20140730Scottsville"
 {
-global g_WeekdayName
 
-regexmatch(para_filename, "\D+(\d+)-li.pdf", RE_TimeStamp)
+regexmatch(para_String, "(\d{4})(\d{2})(\d{2})", RE_TimeStamp)
 	If (RE_TimeStamp1 != "") {
 	;dddd corresponds to Monday for example
-	FormatTime, l_WeekdayName , %RE_TimeStamp1%, dddd
+	FormatTime, l_WeekdayName , %RE_TimeStamp1%%RE_TimeStamp2%%RE_TimeStamp3%, dddd
 	}
 	If (l_WeekdayName != "") {
 	Return l_WeekdayName
 	} 
 	Else {
-	;Return the existing day name if no new one was found
-	Return g_WeekdayName
+	;Return a fat error is nothing is found
+	MSgbox, ERROR - %RE_TimeStamp1%%RE_TimeStamp2%%RE_TimeStamp3% - %para_String%
+	Return "ERROR"
 	}
 }
+
+
+;Changes a correct Timestamp 20140730 to a bad one! 071314
+Fn_GetModifiedDate(para_String) ;Example Input: "20140730Scottsville"
+{
+
+regexmatch(para_String, "20(\d{2})(\d{2})(\d{2})", RE_TimeStamp)
+	If (RE_TimeStamp1 != "") {
+	l_NewDateFormat = %RE_TimeStamp2%%RE_TimeStamp3%%RE_TimeStamp1%
+	Return l_NewDateFormat
+	}
+	Else
+	{
+	Msgbox, %para_String%
+	}
+
+}
+
 
 Fn_FindTrackIniKey(para_TrackCode)
 {
@@ -354,7 +365,7 @@ Fn_FindTrackIniKey(para_TrackCode)
 	}
 }
 
-Fn_InsertData(para_key, para_TrackName, para_FileName) 
+Fn_InsertData(para_Key, para_TrackName, para_DateTrack, para_OldFileName) 
 {
 Global
 
@@ -367,37 +378,75 @@ Global
 	}
 ;AllTracks_Array.Insert(1, para_key, para_TrackName, para_FileName)
 ;Msgbox, ------%AllTracks_ArraX% - %para_key%
-AllTracks_Array[AllTracks_ArraX,"Key"] := para_key
+AllTracks_Array[AllTracks_ArraX,"Key"] := para_Key
 AllTracks_Array[AllTracks_ArraX,"TrackName"] := para_TrackName
-AllTracks_Array[AllTracks_ArraX,"FileName"] := para_FileName
+AllTracks_Array[AllTracks_ArraX,"DateTrack"] := para_DateTrack
+AllTracks_Array[AllTracks_ArraX,"FileName"] := para_OldFileName
 ;Msgbox % AllTracks_Array[AllTracks_ArraX,"Key"]
 AllTracks_ArraX += 1
 }
 
-Fn_Export(para_key) {
+Fn_Export(para_Key) {
 Global AllTracks_Array
 
-;Create HTML Title if 
-Fn_HTMLTitle(para_key)
+	;Create HTML Title if any of that kind of track exist
+	AllTracks_ArraX = 0
+	Loop % AllTracks_Array.MaxIndex()
+	{
+		If (para_key = AllTracks_Array[A_Index,"Key"] )
+		{
+		AllTracks_ArraX += 1
+		}
+	}
+	If ( AllTracks_ArraX >= 1)
+	{
+	Fn_InsertBlank(void)
+	Fn_InsertBlank(void)
+	Fn_InsertBlank(void)
+	Fn_HTMLTitle(para_Key)
+	}
+
 
 	;Read each track in the array and write to HTML if it matches the current key (GB/IR, Australia, etc)
 	Loop % AllTracks_Array.MaxIndex()
 	{
-	Msgbox % para_key . "   " . AllTracks_Array[A_Index,"Key"]
 		If (para_key = AllTracks_Array[A_Index,"Key"] )
 		{
-		Msgbox, alf
 		l_key := AllTracks_Array[A_Index,"Key"]
 		l_TrackName := AllTracks_Array[A_Index,"TrackName"]
-		l_FileName := AllTracks_Array[A_Index,"FileName"]
-		l_WeekdayName := Fn_GetWeekName(l_FileName)
-		;Msgbox, %l_FileName%
-		l_CurrentLine = <a href="[current-domain:forms-url]%l_FileName%" target="_blank">%l_TrackName%, %l_WeekdayName% PPs</a><br />
+		l_DateTrack := AllTracks_Array[A_Index,"DateTrack"]
+		l_OldFileName := AllTracks_Array[A_Index,"FileName"]
+		
+		;Convert data out of l_DateTrack to get the weekdayname and new format of timestamp
+		l_WeekdayName := Fn_GetWeekName(l_DateTrack)
+		l_TimeFormat := Fn_GetModifiedDate(l_DateTrack)
+		
+		;Move file with new name; overwriting if necessary
+		l_NewFileName = %l_TrackName%%l_TimeFormat%-li.pdf
+		FileMove, %A_ScriptDir%\%l_OldFileName%, %A_ScriptDir%\%l_NewFileName%, 1
+			;If the filemove was unsuccessful for any reason, tell user
+			If (Errorlevel) 
+			{
+			Msgbox, There was a problem renaming the %l_OldFileName% file. Permissions\FileInUse
+			}
+			
+		
+		l_TrackName := Fn_ReplaceString("_", " ", l_TrackName)
+			If (InStr(l_TrackName, "Australia") || InStr(l_TrackName, "New Zealand")) {
+			l_CurrentLine = <a href="[current-domain:forms-url]%l_NewFileName%" target="_blank">%l_WeekdayName% PPs</a><br />
+			}
+			Else
+			{
+			l_CurrentLine = <a href="[current-domain:forms-url]%l_NewFileName%" target="_blank">%l_TrackName%, %l_WeekdayName% PPs</a><br />
+			}
 		Fn_InsertText(l_CurrentLine)
+		
+
+			
 		}
 	
 	}
-;RemovedValue := Array.Remove(X) ;Prob wont work with multidimensional
+
 }
 
 Fn_HTMLTitle(para_Text) {
@@ -405,6 +454,11 @@ para_Text := Fn_ReplaceString("#", "/", para_Text)
 para_Text := Fn_ReplaceString("_", " ", para_Text)
 l_CurrentLine = <span style="color: #0c9256;"><strong>%para_Text%</strong></span><br />
 Fn_InsertText(l_CurrentLine)
+	If (InStr(para_Text, "GB"))
+	{
+	l_CurrentLine = <span style="color: #0c9256;"><strong>TIMEFORM LINE HERE</strong></span><br />
+	Fn_InsertText(l_CurrentLine)
+	}
 }
 
 
@@ -438,6 +492,6 @@ StartUp() {
 Sb_GlobalNameSpace() {
 global
 
-AllTracks_Array := {Key:"", TrackName:"", FileName:""}
-AllTracks_ArraX = 0
+AllTracks_Array := {Key:"", TrackName:"", DateTrack:"", FileName:""}
+AllTracks_ArraX = 1
 }
