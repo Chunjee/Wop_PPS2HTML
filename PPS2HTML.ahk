@@ -9,7 +9,7 @@
 ;Compile Options
 ;~~~~~~~~~~~~~~~~~~~~~
 StartUp()
-Version = Version 1.10
+Version = Pre v2.0
 
 ;Dependencies
 #Include %A_ScriptDir%\Functions
@@ -99,7 +99,7 @@ Loop, %A_ScriptDir%\*.pdf {
 	TrackName := %Ini_Key%_%TrackTLA%
 	The_DateTrack = %RE_SimoCentralFile1%%RE_SimoCentralFile2%%RE_SimoCentralFile3%%TrackName%
 	Fn_InsertData(Ini_Key, TrackName, The_DateTrack, A_LoopFileName)
-		
+	
 	StringReplace, TrackName, TrackName, %A_SPACE%, _, All
 	
 		;If [Key]_TLA has no associated track; tell user and exit
@@ -107,7 +107,7 @@ Loop, %A_ScriptDir%\*.pdf {
 		Msgbox, There was no corresponding track found for %TrackTLA%, please update the config.ini file and run again. `n `n You should have something like this: `n[Key]`n %TrackTLA%=Track Name
 		ExitApp
 		}
-	
+		
 	}
 	
 }
@@ -365,6 +365,7 @@ Fn_FindTrackIniKey(para_TrackCode)
 	}
 }
 
+
 Fn_InsertData(para_Key, para_TrackName, para_DateTrack, para_OldFileName) 
 {
 Global
@@ -385,6 +386,7 @@ AllTracks_Array[AllTracks_ArraX,"FileName"] := para_OldFileName
 ;Msgbox % AllTracks_Array[AllTracks_ArraX,"Key"]
 AllTracks_ArraX += 1
 }
+
 
 Fn_Export(para_Key) {
 Global AllTracks_Array
@@ -446,8 +448,14 @@ Global AllTracks_Array
 		}
 	
 	}
-
+	
+	If ( AllTracks_ArraX >= 1)
+	{
+	l_CurrentLine = <br />
+	Fn_InsertText(l_CurrentLine)
+	}
 }
+
 
 Fn_HTMLTitle(para_Text) {
 para_Text := Fn_ReplaceString("#", "/", para_Text)
@@ -456,7 +464,7 @@ l_CurrentLine = <span style="color: #0c9256;"><strong>%para_Text%</strong></span
 Fn_InsertText(l_CurrentLine)
 	If (InStr(para_Text, "GB"))
 	{
-	l_CurrentLine = <span style="color: #0c9256;"><strong>TIMEFORM LINE HERE</strong></span><br />
+	l_CurrentLine = <a href="http://www.timeform.com/free/" target="_blank">TIMEFORM</a><br />
 	Fn_InsertText(l_CurrentLine)
 	}
 }
