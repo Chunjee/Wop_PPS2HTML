@@ -128,11 +128,14 @@ Loop, %A_ScriptDir%\*.pdf {
 Fn_Sort2DArrayFast(AllTracks_Array, "DateTrack")
 
 ;Export Each Track type to HTML.txt; also handles renaming files
+;Aus and NZ must be handled explicitly
 Fn_Export("Australia")
 Fn_Export("New_Zealand")
-Fn_Export("GB#IRE")
-Fn_Export("South_Africa")
-
+	;Loop all others
+	Loop, %inisections%
+	{
+	Fn_Export(section%A_Index%)
+	}
 
 ;For Debugging. Show contents of the Array 
 ;Array_Gui(AllTracks_Array)
@@ -145,11 +148,6 @@ Fn_Export("South_Africa")
 
 
 
-ExitApp
-
-
-
-
 
 
 ;/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\
@@ -157,144 +155,149 @@ ExitApp
 ;\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/
 
 
-
-
 ;~~~~~~~~~~~~~~~~~~~~~
 ; TVG3 HTML
 ;~~~~~~~~~~~~~~~~~~~~~
-;Label TVG3 Section of HTML
-FileAppend,
-(
--=TVG 3=---------------------
-), %A_ScriptDir%\html.txt
-Fn_InsertBlank(void)
-;Label Australia Section of HTML
-FileAppend,`n      Australia`n, %A_ScriptDir%\html.txt
-Fn_InsertBlank(void)
 
-
-;Loop for all Australia pdf files
-Loop, %A_ScriptDir%\*.pdf
+If (Options_OldTVG3HTML = 1)
 {
-
-	If (InStr(A_LoopFileName, "Australia") || InStr(A_LoopFileName, "NewZealand")) {
-	g_FinalWeekdayName := Fn_GetWeekName(A_LoopFileName)
+	;Insert Blank area for separation between TVG3 and TVG2
+	Fn_InsertBlank(void)
+	Fn_InsertBlank(void)
+	Fn_InsertBlank(void)
+	Fn_InsertBlank(void)
+	Fn_InsertBlank(void)
+	Fn_InsertBlank(void)
+	Fn_InsertBlank(void)
+	
+	;Label TVG3 Section of HTML
 	FileAppend,
 	(
-	<a href="[current-domain:forms-url]%A_LoopFileName%" target="_blank">%g_FinalWeekdayName% PPs</a><br />
-	
+	-=TVG 3=---------------------
 	), %A_ScriptDir%\html.txt
+	Fn_InsertBlank(void)
+	;Label Australia Section of HTML
+	FileAppend,`n      Australia\New Zealand`n, %A_ScriptDir%\html.txt
+	Fn_InsertBlank(void)
+
+
+	;Loop for all Australia pdf files
+	Loop, %A_ScriptDir%\*.pdf
+	{
+
+		If (InStr(A_LoopFileName, "Australia") || InStr(A_LoopFileName, "NewZealand")) {
+		g_FinalWeekdayName := Fn_GetWeekNameOLD(A_LoopFileName)
+		FileAppend,
+		(
+		<a href="/forms/%A_LoopFileName%" target="_blank">%g_FinalWeekdayName% PPs</a><br />
+		
+		), %A_ScriptDir%\html.txt
+		}
+
 	}
 
+
+	Fn_InsertBlank(void)
+	Fn_InsertBlank(void)
+	;Label GB/IR Section of HTML
+	FileAppend,`n      Simo-Central Files`n, %A_ScriptDir%\html.txt
+	Fn_InsertBlank(void)
+
+
+	;Loop for all GB/IR pdf files
+	Loop, %A_ScriptDir%\*.pdf
+	{
+	If (InStr(A_LoopFileName, "Australia") || InStr(A_LoopFileName, "NewZealand")) {
+		Continue
+		}
+	regexmatch(A_LoopFileName, "(\D+)\d+-li", RE_TrackName)
+		If (RE_TrackName != "")	{
+		TrackName := RE_TrackName1
+		StringReplace, TrackName, TrackName, _, %A_SPACE%, All
+		StringReplace, A_LoopFileNameNoSpace, A_LoopFileName, %A_SPACE%, , All
+		g_FinalWeekdayName := Fn_GetWeekNameOLD(A_LoopFileName)
+	FileAppend,
+	(
+	<a href="/forms/%A_LoopFileNameNoSpace%" target="_blank">%Trackname%, %g_FinalWeekdayName% PPs</a><br />
+
+	), %A_ScriptDir%\html.txt
+		}
+	}
+
+	;Add trailing <br>
+	FileAppend,
+	(
+	<br \>
+	), %A_ScriptDir%\html.txt
 }
-
-
-Fn_InsertBlank(void)
-Fn_InsertBlank(void)
-;Label GB/IR Section of HTML
-FileAppend,`n      Great Britain\Ireland`n, %A_ScriptDir%\html.txt
-Fn_InsertBlank(void)
-
-
-;Loop for all GB/IR pdf files
-Loop, %A_ScriptDir%\*.pdf
-{
-If (InStr(A_LoopFileName, "Australia") || InStr(A_LoopFileName, "NewZealand")) {
-	Continue
-	}
-regexmatch(A_LoopFileName, "(\D+)\d+-li", RE_TrackName)
-	If (RE_TrackName != "")	{
-	TrackName := RE_TrackName1
-	StringReplace, TrackName, TrackName, _, %A_SPACE%, All
-	StringReplace, A_LoopFileNameNoSpace, A_LoopFileName, %A_SPACE%, , All
-	g_FinalWeekdayName := Fn_GetWeekName(A_LoopFileName)
-FileAppend,
-(
-<a href="[current-domain:forms-url]%A_LoopFileNameNoSpace%" target="_blank">%Trackname%, %g_FinalWeekdayName% PPs</a><br />
-
-), %A_ScriptDir%\html.txt
-	}
-}
-
-;Add trailing <br>
-FileAppend,
-(
-<br \>
-), %A_ScriptDir%\html.txt
-
-
-;Insert Blank area for separation between TVG3 and TVG2
-Fn_InsertBlank(void)
-Fn_InsertBlank(void)
-Fn_InsertBlank(void)
-Fn_InsertBlank(void)
-Fn_InsertBlank(void)
-Fn_InsertBlank(void)
-Fn_InsertBlank(void)
 
 
 ;~~~~~~~~~~~~~~~~~~~~~
 ; TVG2 HTML
 ;~~~~~~~~~~~~~~~~~~~~~
-;Label for TVG2
-LineText = -=TVG 2=---------------------
-Fn_InsertText(LineText)
-FileAppend,`n      Australia`n, %A_ScriptDir%\html.txt
-Fn_InsertBlank(void)
 
-;Loop for all Australia pdf files
-Loop, %A_ScriptDir%\*.pdf {
+If (Options_OldTVG2HTML = 1)
+{
+	;Insert Blank area for separation between TVG3 and TVG2
+	Fn_InsertBlank(void)
+	Fn_InsertBlank(void)
+	Fn_InsertBlank(void)
+	Fn_InsertBlank(void)
+	Fn_InsertBlank(void)
+	Fn_InsertBlank(void)
+	Fn_InsertBlank(void)
+	
+	;Label for TVG2
+	LineText = -=TVG 2=---------------------
+	Fn_InsertText(LineText)
+	FileAppend,`n      Australia`n, %A_ScriptDir%\html.txt
+	Fn_InsertBlank(void)
 
-	If (InStr(A_LoopFileName, "Australia") || InStr(A_LoopFileName, "NewZealand"))
-	{
-	g_FinalWeekdayName := Fn_GetWeekName(A_LoopFileName)
-	FileAppend,<a href="https://www.tvg.com/forms/%A_LoopFileName%" target="_blank">%g_FinalWeekdayName% PPs</a><br />`n, %A_ScriptDir%\html.txt
+	;Loop for all Australia pdf files
+	Loop, %A_ScriptDir%\*.pdf {
+
+		If (InStr(A_LoopFileName, "Australia") || InStr(A_LoopFileName, "NewZealand"))
+		{
+		g_FinalWeekdayName := Fn_GetWeekNameOLD(A_LoopFileName)
+		FileAppend,<a href="https://www.tvg.com/forms/%A_LoopFileName%" target="_blank">%g_FinalWeekdayName% PPs</a><br />`n, %A_ScriptDir%\html.txt
+		}
 	}
+
+
+	Fn_InsertBlank(void)
+	Fn_InsertBlank(void)
+	FileAppend,`n      Great Britain\Ireland`n, %A_ScriptDir%\html.txt
+	Fn_InsertBlank(void)
+
+
+	;Loop for all GB/IR pdf files
+	Loop, %A_ScriptDir%\*.pdf {
+		If (InStr(A_LoopFileName, "Australia") || InStr(A_LoopFileName, "NewZealand")) {
+		Continue
+		}
+		
+		
+		regexmatch(A_LoopFileName, "(\D+)\d+-li", RE_TrackName)
+		If (RE_TrackName != "")	{
+		TrackName := RE_TrackName1
+		StringReplace, TrackName, TrackName, _, %A_SPACE%, All
+		StringReplace, A_LoopFileNameNoSpace, A_LoopFileName, %A_SPACE%, , All
+		g_FinalWeekdayName := Fn_GetWeekNameOLD(A_LoopFileName)
+		
+		FileAppend,
+	(
+	<a href="https://www.tvg.com/forms/%A_LoopFileNameNoSpace%" target="_blank">%Trackname%, %g_FinalWeekdayName% PPs</a><br />`n
+	), %A_ScriptDir%\html.txt
+		}
+
+	;take space out of FileName and put into a new variable so that the html link will match the no space filename
+
+	}
+
+	FileAppend,<br \>, %A_ScriptDir%\html.txt
+
 }
 
-
-Fn_InsertBlank(void)
-Fn_InsertBlank(void)
-FileAppend,`n      Great Britain\Ireland`n, %A_ScriptDir%\html.txt
-Fn_InsertBlank(void)
-
-
-;Loop for all GB/IR pdf files
-Loop, %A_ScriptDir%\*.pdf {
-	If (InStr(A_LoopFileName, "Australia") || InStr(A_LoopFileName, "NewZealand")) {
-	Continue
-	}
-	
-	
-	regexmatch(A_LoopFileName, "(\D+)\d+-li", RE_TrackName)
-	If (RE_TrackName != "")	{
-	TrackName := RE_TrackName1
-	StringReplace, TrackName, TrackName, _, %A_SPACE%, All
-	StringReplace, A_LoopFileNameNoSpace, A_LoopFileName, %A_SPACE%, , All
-	g_FinalWeekdayName := Fn_GetWeekName(A_LoopFileName)
-	
-	FileAppend,
-(
-<a href="https://www.tvg.com/forms/%A_LoopFileNameNoSpace%" target="_blank">%Trackname%, %g_FinalWeekdayName% PPs</a><br />`n
-), %A_ScriptDir%\html.txt
-	}
-
-;take space out of FileName and put into a new variable so that the html link will match the no space filename
-
-}
-
-FileAppend,<br \>, %A_ScriptDir%\html.txt
-
-
-
-;Ok we have everything done, just need to remove all spaces from all pdf filenames; spaces should not exist anyway at this point.
-Loop, %A_ScriptDir%\*.pdf {
-StringReplace, A_LoopFileNameNoSpace, A_LoopFileName, %A_SPACE%, , All
-FileMove, %A_ScriptDir%\%A_LoopFileName%, %A_ScriptDir%\%A_LoopFileNameNoSpace%, 1
-	If (Errorlevel)	{
-	Msgbox, There was a problem removing spaces from the %A_LoopFileName% file. Permissions\Duplicate\Unknown
-	}
-}
 
 ;Finished, exit
 ExitApp
@@ -318,10 +321,29 @@ regexmatch(para_String, "(\d{4})(\d{2})(\d{2})", RE_TimeStamp)
 	}
 	If (l_WeekdayName != "") {
 	Return l_WeekdayName
+	}
+	Else {
+	;Return a fat error is nothing is found
+	Msgbox, ERROR - %RE_TimeStamp1%%RE_TimeStamp2%%RE_TimeStamp3% - %para_String%
+	Return "ERROR"
+	}
+}
+
+
+Fn_GetWeekNameOLD(para_String) ;Example Input: "20140730Scottsville"
+{
+
+regexmatch(para_String, "(\d{2})(\d{2})(\d{2})", RE_TimeStamp)
+	If (RE_TimeStamp1 != "") {
+	;dddd corresponds to Monday for example
+	FormatTime, l_WeekdayName , 20%RE_TimeStamp3%%RE_TimeStamp1%%RE_TimeStamp2%, dddd
+	}
+	If (l_WeekdayName != "") {
+	Return l_WeekdayName
 	} 
 	Else {
 	;Return a fat error is nothing is found
-	MSgbox, ERROR - %RE_TimeStamp1%%RE_TimeStamp2%%RE_TimeStamp3% - %para_String%
+	Msgbox, Couldn't understand the date format in %para_String%
 	Return "ERROR"
 	}
 }
