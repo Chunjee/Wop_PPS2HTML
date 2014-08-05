@@ -25,7 +25,7 @@ Version = Pre v2.0
 ;Startup special global variables
 Sb_GlobalNameSpace()
 
-
+GUI()
 ;Clear the old html.txt ;added some filesize checking for added safety
 g_HMTLFile = %A_ScriptDir%\html.txt
 	IfExist, %g_HMTLFile%
@@ -185,7 +185,7 @@ If (Options_OldTVG3HTML = 1)
 	Loop, %A_ScriptDir%\*.pdf
 	{
 
-		If (InStr(A_LoopFileName, "Australia") || InStr(A_LoopFileName, "NewZealand")) {
+		If (InStr(A_LoopFileName, "Australia") || InStr(A_LoopFileName, "New_Zealand")) {
 		g_FinalWeekdayName := Fn_GetWeekNameOLD(A_LoopFileName)
 		FileAppend,
 		(
@@ -204,10 +204,10 @@ If (Options_OldTVG3HTML = 1)
 	Fn_InsertBlank(void)
 
 
-	;Loop for all GB/IR pdf files
+	;Loop for all SimoCentral pdf files
 	Loop, %A_ScriptDir%\*.pdf
 	{
-	If (InStr(A_LoopFileName, "Australia") || InStr(A_LoopFileName, "NewZealand")) {
+	If (InStr(A_LoopFileName, "Australia") || InStr(A_LoopFileName, "New_Zealand")) {
 		Continue
 		}
 	regexmatch(A_LoopFileName, "(\D+)\d+-li", RE_TrackName)
@@ -250,13 +250,13 @@ If (Options_OldTVG2HTML = 1)
 	;Label for TVG2
 	LineText = -=TVG 2=---------------------
 	Fn_InsertText(LineText)
-	FileAppend,`n      Australia`n, %A_ScriptDir%\html.txt
+	FileAppend,`n      Australia\New Zealand`n, %A_ScriptDir%\html.txt
 	Fn_InsertBlank(void)
 
 	;Loop for all Australia pdf files
 	Loop, %A_ScriptDir%\*.pdf {
 
-		If (InStr(A_LoopFileName, "Australia") || InStr(A_LoopFileName, "NewZealand"))
+		If (InStr(A_LoopFileName, "Australia") || InStr(A_LoopFileName, "New_Zealand"))
 		{
 		g_FinalWeekdayName := Fn_GetWeekNameOLD(A_LoopFileName)
 		FileAppend,<a href="https://www.tvg.com/forms/%A_LoopFileName%" target="_blank">%g_FinalWeekdayName% PPs</a><br />`n, %A_ScriptDir%\html.txt
@@ -266,13 +266,13 @@ If (Options_OldTVG2HTML = 1)
 
 	Fn_InsertBlank(void)
 	Fn_InsertBlank(void)
-	FileAppend,`n      Great Britain\Ireland`n, %A_ScriptDir%\html.txt
+	FileAppend,`n      Simo-Central Files`n, %A_ScriptDir%\html.txt
 	Fn_InsertBlank(void)
 
 
-	;Loop for all GB/IR pdf files
+	;Loop for all SimoCentral pdf files
 	Loop, %A_ScriptDir%\*.pdf {
-		If (InStr(A_LoopFileName, "Australia") || InStr(A_LoopFileName, "NewZealand")) {
+		If (InStr(A_LoopFileName, "Australia") || InStr(A_LoopFileName, "New_Zealand")) {
 		Continue
 		}
 		
@@ -299,7 +299,8 @@ If (Options_OldTVG2HTML = 1)
 }
 
 
-;Finished, exit
+;Finished, exit after short nap
+Sleep 1000
 ExitApp
 
 
@@ -387,26 +388,28 @@ Fn_FindTrackIniKey(para_TrackCode)
 	}
 }
 
-
+;This function inserts each track to an array that later gets sorted and exported to HTML
 Fn_InsertData(para_Key, para_TrackName, para_DateTrack, para_OldFileName) 
 {
 Global
 
-;AllTracks_ArraX := AllTracks_Array.MaxIndex()
-;Msgbox, MAX  IS %X% ; FYI Max will never be blank because it is not created empty
+;Find out how big the array is currently
+AllTracks_ArraX := AllTracks_Array.MaxIndex()
+
 	If (AllTracks_ArraX = "")
 	{
-	;Array is blank
-	AllTracks_ArraX = 1
+	;Array is blank, start at 0
+	AllTracks_ArraX = 0
 	}
-;AllTracks_Array.Insert(1, para_key, para_TrackName, para_FileName)
-;Msgbox, ------%AllTracks_ArraX% - %para_key%
+
+;Increment for the next track input
+AllTracks_ArraX += 1	
+
+;Insert each parameter into the appropriate array key
 AllTracks_Array[AllTracks_ArraX,"Key"] := para_Key
 AllTracks_Array[AllTracks_ArraX,"TrackName"] := para_TrackName
 AllTracks_Array[AllTracks_ArraX,"DateTrack"] := para_DateTrack
 AllTracks_Array[AllTracks_ArraX,"FileName"] := para_OldFileName
-;Msgbox % AllTracks_Array[AllTracks_ArraX,"Key"]
-AllTracks_ArraX += 1
 }
 
 
@@ -506,6 +509,36 @@ FileAppend, %para_Text%`n, %A_ScriptDir%\html.txt
 ;This function inserts a blank line. How worthless 
 Fn_InsertBlank(void) {
 FileAppend, `n, %A_ScriptDir%\html.txt
+}
+
+;/--\--/--\--/--\--/--\--/--\
+; GUI
+;\--/--\--/--\--/--\--/--\--/
+GUI()
+{
+global
+;Title
+Gui, Font, s14 w70, Arial
+Gui, Add, Text, x2 y4 w220 h40 +Center, PPS2HTML
+Gui, Font, s10 w70, Arial
+Gui, Add, Text, x168 y0 w50 h20 +Right, %Version%
+
+
+;User Input
+;Gui, Add, Text, x8 y110 w100 h30 +Right, Domain\Account:
+;Gui, Add, Edit, x110 y110 w100 h20 vThe_UserINPUT,
+
+;Gui, Add, Text, x8 y135 w100 h30 +Right, Pass:
+;Gui, Add, Edit, x110 y135 w100 h20 Password vThe_PassINPUT,
+
+;Gui, Add, Button, x4 y30 w80 h40 gSelect, Select File
+;Gui, Add, Button, x84 y30 w130 h40 gRun default, Run
+
+
+;Large Progress Bar UNUSED
+;Gui, Add, Progress, x4 y130 w480 h20 , 100
+
+Gui, Show, h30 w220, PPS2HTML
 }
 
 
