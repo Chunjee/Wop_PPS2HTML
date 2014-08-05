@@ -15,6 +15,7 @@ Version = Pre v2.0
 #Include %A_ScriptDir%\Functions
 #Include inireadwrite
 #Include sort_arrays
+#Include json_obj
 
 #Include util_arrays
 
@@ -24,6 +25,11 @@ Version = Pre v2.0
 
 ;Startup special global variables
 Sb_GlobalNameSpace()
+
+;Import Existing Track DB File
+FileRead, MemoryFile, %A_ScriptDir%\DB.json
+AllTracks_Array := Fn_JSONtooOBJ(MemoryFile)
+
 
 GUI()
 ;Clear the old html.txt ;added some filesize checking for added safety
@@ -138,7 +144,7 @@ Fn_Export("New_Zealand")
 	}
 
 ;For Debugging. Show contents of the Array 
-;Array_Gui(AllTracks_Array)
+Array_Gui(AllTracks_Array)
 
 
 
@@ -297,7 +303,10 @@ If (Options_OldTVG2HTML = 1)
 	FileAppend,<br \>, %A_ScriptDir%\html.txt
 
 }
-
+;Export Array as a JSON file
+MemoryFile := Fn_JSONfromOBJ(AllTracks_Array)
+FileDelete, %A_ScriptDir%\DB.json
+FileAppend, %MemoryFile%, %A_ScriptDir%\DB.json
 
 ;Finished, exit after short nap
 Sleep 1000
@@ -361,7 +370,7 @@ regexmatch(para_String, "20(\d{2})(\d{2})(\d{2})", RE_TimeStamp)
 	}
 	Else
 	{
-	Msgbox, %para_String%
+	Msgbox, Couldn't understand the date format of %para_String%. Check for Errors.
 	}
 
 }
@@ -404,7 +413,7 @@ AllTracks_ArraX := AllTracks_Array.MaxIndex()
 
 ;Increment for the next track input
 AllTracks_ArraX += 1	
-
+MSgbox, %AllTracks_ArraX%
 ;Insert each parameter into the appropriate array key
 AllTracks_Array[AllTracks_ArraX,"Key"] := para_Key
 AllTracks_Array[AllTracks_ArraX,"TrackName"] := para_TrackName
