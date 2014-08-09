@@ -17,6 +17,7 @@ Version = Pre v2.0
 #Include sort_arrays
 #Include json_obj
 
+;For Debug Only
 #Include util_arrays
 
 ;/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\
@@ -27,7 +28,7 @@ Version = Pre v2.0
 Sb_GlobalNameSpace()
 
 ;Import Existing Track DB File
-FileRead, MemoryFile, %A_ScriptDir%\DB.json
+FileRead, MemoryFile, %Options_DBLocation%DB.json
 AllTracks_Array := Fn_JSONtooOBJ(MemoryFile)
 
 
@@ -62,7 +63,7 @@ Fn_LoadIni(settings)
 
 
 ;/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\
-; File Renaming
+; Import Files into Memory Array
 ;\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/
 
 
@@ -85,6 +86,22 @@ Loop, %A_ScriptDir%\*.pdf {
 	The_DateTrack = 20%Options_Year%%RE_NZ1%%RE_NZ2%New_Zealand
 	Fn_InsertData("New_Zealand", "New_Zealand", The_DateTrack, A_LoopFileName)
 	}
+}
+
+;### JAPAN--------------------------------------------
+Loop, %A_ScriptDir%\*.pdf {
+	;Is this track Japan? They all have "Japan" in the name
+	If (InStr(A_LoopFileName, "Japan"))
+	{
+		;Grab the date
+		regexmatch(A_LoopFileName, "(\d{2})(\d{2})(\d{2})", RE_JP)
+		If (RE_JP1 != "") {
+		The_DateTrack = 20%RE_JP3%%RE_JP1%%RE_JP2%Japan
+		Fn_InsertData("Japan", "Japan", The_DateTrack, A_LoopFileName)
+		}
+		
+	}
+	
 }
 
 
@@ -137,6 +154,7 @@ Fn_Sort2DArrayFast(AllTracks_Array, "DateTrack")
 ;Aus and NZ must be handled explicitly
 Fn_Export("Australia")
 Fn_Export("New_Zealand")
+Fn_Export("Japan")
 	;Loop all others
 	Loop, %inisections%
 	{
@@ -305,8 +323,8 @@ If (Options_OldTVG2HTML = 1)
 }
 ;Export Array as a JSON file
 MemoryFile := Fn_JSONfromOBJ(AllTracks_Array)
-FileDelete, %A_ScriptDir%\DB.json
-FileAppend, %MemoryFile%, %A_ScriptDir%\DB.json
+FileDelete, %Options_DBLocation%\DB.json
+FileAppend, %MemoryFile%, %Options_DBLocation%\DB.json
 
 ;Finished, exit after short nap
 Sleep 1000
@@ -340,22 +358,22 @@ regexmatch(para_String, "(\d{4})(\d{2})(\d{2})", RE_TimeStamp)
 }
 
 
-Fn_GetWeekNameOLD(para_String) ;Example Input: "20140730Scottsville"
+Fn_GetWeekNameOLD(para_String) ;Example Input: "073014Scottsville"
 {
 
 regexmatch(para_String, "(\d{2})(\d{2})(\d{2})", RE_TimeStamp)
-	If (RE_TimeStamp1 != "") {
+	If (RE_TimeStamp1 != "")
+	{
 	;dddd corresponds to Monday for example
 	FormatTime, l_WeekdayName , 20%RE_TimeStamp3%%RE_TimeStamp1%%RE_TimeStamp2%, dddd
 	}
-	If (l_WeekdayName != "") {
-	Return l_WeekdayName
-	} 
-	Else {
-	;Return a fat error is nothing is found
-	Msgbox, Couldn't understand the date format in %para_String%
-	Return "ERROR"
-	}
+		If (l_WeekdayName != "") 
+		{
+		Return l_WeekdayName
+		}
+;Return a fat error if nothing is found
+Msgbox, Couldn't understand the date format in %para_String%
+Return "ERROR"
 }
 
 
@@ -404,21 +422,35 @@ Global
 
 ;Find out how big the array is currently
 AllTracks_ArraX := AllTracks_Array.MaxIndex()
-
+l_ExistsAlreadyFlag := 0
 	If (AllTracks_ArraX = "")
 	{
 	;Array is blank, start at 0
 	AllTracks_ArraX = 0
 	}
 
-;Increment for the next track input
-AllTracks_ArraX += 1	
-MSgbox, %AllTracks_ArraX%
-;Insert each parameter into the appropriate array key
-AllTracks_Array[AllTracks_ArraX,"Key"] := para_Key
-AllTracks_Array[AllTracks_ArraX,"TrackName"] := para_TrackName
-AllTracks_Array[AllTracks_ArraX,"DateTrack"] := para_DateTrack
-AllTracks_Array[AllTracks_ArraX,"FileName"] := para_OldFileName
+	;See if the Track/Date is already present in the array. If yes, do not insert again
+	Loop, %AllTracks_ArraX%
+	{
+		If (para_DateTrack = AllTracks_Array[A_Index,"DateTrack"])
+		{
+		;Msgbox, %para_DateTrack% exists in this array already
+		l_ExistsAlreadyFlag := 1
+		}
+	}
+	
+	If (l_ExistsAlreadyFlag = 0)
+	{
+	;Increment for the next track input
+	AllTracks_ArraX += 1	
+	;Msgbox, %AllTracks_ArraX%
+	;Insert each parameter into the appropriate array key
+	AllTracks_Array[AllTracks_ArraX,"Key"] := para_Key
+	AllTracks_Array[AllTracks_ArraX,"TrackName"] := para_TrackName
+	AllTracks_Array[AllTracks_ArraX,"DateTrack"] := para_DateTrack
+	AllTracks_Array[AllTracks_ArraX,"FileName"] := para_OldFileName
+	} 
+
 }
 
 
@@ -448,7 +480,7 @@ Global AllTracks_Array
 	{
 		If (para_key = AllTracks_Array[A_Index,"Key"] )
 		{
-		l_key := AllTracks_Array[A_Index,"Key"]
+		l_Key := AllTracks_Array[A_Index,"Key"]
 		l_TrackName := AllTracks_Array[A_Index,"TrackName"]
 		l_DateTrack := AllTracks_Array[A_Index,"DateTrack"]
 		l_OldFileName := AllTracks_Array[A_Index,"FileName"]
@@ -468,7 +500,9 @@ Global AllTracks_Array
 			
 		
 		l_TrackName := Fn_ReplaceString("_", " ", l_TrackName)
-			If (InStr(l_TrackName, "Australia") || InStr(l_TrackName, "New Zealand")) {
+		l_Key := Fn_ReplaceString("_", " ", l_Key)
+		;If the TrackName matches the Key, only output day in the HTML Name (This is for Australia/New Zealand/Japan
+			If (l_TrackName = l_Key) {
 			l_CurrentLine = <a href="[current-domain:forms-url]%l_NewFileName%" target="_blank">%l_WeekdayName% PPs</a><br />
 			}
 			Else
