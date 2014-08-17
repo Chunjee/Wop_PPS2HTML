@@ -94,7 +94,7 @@ Loop, %A_ScriptDir%\*.pdf {
 	If (InStr(A_LoopFileName, "Japan"))
 	{
 		;Grab the date
-		regexmatch(A_LoopFileName, "(\d{2})(\d{2})(\d{2})", RE_JP)
+		regexmatch(A_LoopFileName, "(\d{2}).*(\d{2}).*(\d{2})", RE_JP)
 		If (RE_JP1 != "") {
 		The_DateTrack = 20%RE_JP3%%RE_JP1%%RE_JP2%Japan
 		Fn_InsertData("Japan", "Japan", The_DateTrack, A_LoopFileName)
