@@ -28,7 +28,7 @@ Version = Pre v2.0
 Sb_GlobalNameSpace()
 
 ;Import Existing Track DB File
-FileRead, MemoryFile, %Options_DBLocation%DB.json
+FileRead, MemoryFile, %Options_DBLocation%\DB.json
 AllTracks_Array := Fn_JSONtooOBJ(MemoryFile)
 
 
@@ -106,7 +106,7 @@ Loop, %A_ScriptDir%\*.pdf {
 
 
 
-;### All Simo Central Renaming----------------
+;### All Simo Central----------------
 Loop, %A_ScriptDir%\*.pdf {
 	;Is this track from Simo Central? They all have "_INTER_IRE." in the name; EX: 20140526DR(D)_INTER.pdf
 	regexmatch(A_LoopFileName, "(\d\d\d\d)(\d\d)(\d\d)(\D+)\(D\)_INTER", RE_SimoCentralFile)
@@ -166,7 +166,10 @@ Array_Gui(AllTracks_Array)
 
 
 
-
+;Export Array as a JSON file
+MemoryFile := Fn_JSONfromOBJ(AllTracks_Array)
+FileDelete, %Options_DBLocation%\DB.json
+FileAppend, %MemoryFile%, %Options_DBLocation%\DB.json
 
 
 
@@ -321,10 +324,6 @@ If (Options_OldTVG2HTML = 1)
 	FileAppend,<br \>, %A_ScriptDir%\html.txt
 
 }
-;Export Array as a JSON file
-MemoryFile := Fn_JSONfromOBJ(AllTracks_Array)
-FileDelete, %Options_DBLocation%\DB.json
-FileAppend, %MemoryFile%, %Options_DBLocation%\DB.json
 
 ;Finished, exit after short nap
 Sleep 1000
@@ -357,6 +356,19 @@ regexmatch(para_String, "(\d{4})(\d{2})(\d{2})", RE_TimeStamp)
 	}
 }
 
+
+Fn_JustGetDate(para_String)
+{
+;local
+	RegexMatch(para_String, "(\d{4})(\d{2})(\d{2})", RE_TimeStamp)
+	If (RE_TimeStamp1 != "")
+	{
+	l_TimeStamp = %RE_TimeStamp1%%RE_TimeStamp2%%RE_TimeStamp3%000000
+	Return %l_TimeStamp%
+	}
+;Else
+Return ERROR
+}
 
 Fn_GetWeekNameOLD(para_String) ;Example Input: "073014Scottsville"
 {
@@ -414,6 +426,7 @@ Fn_FindTrackIniKey(para_TrackCode)
 		}
 	}
 }
+
 
 ;This function inserts each track to an array that later gets sorted and exported to HTML
 Fn_InsertData(para_Key, para_TrackName, para_DateTrack, para_OldFileName) 
@@ -489,6 +502,14 @@ Global AllTracks_Array
 		l_WeekdayName := Fn_GetWeekName(l_DateTrack)
 		l_TimeFormat := Fn_GetModifiedDate(l_DateTrack)
 		
+		l_FileTimeStamp := Fn_JustGetDate(l_DateTrack)
+		l_Today := %A_YYYY%%A_MM%%A_DD%
+			If(l_FileTimeStamp <= %l_Today%)
+			{
+			Msgbox, %l_FileTimeStamp% is older than today: %l_Today%`; skipping
+			Continue
+			}
+			
 		;Move file with new name; overwriting if necessary
 		l_NewFileName = %l_TrackName%%l_TimeFormat%-li.pdf
 		FileMove, %A_ScriptDir%\%l_OldFileName%, %A_ScriptDir%\%l_NewFileName%, 1
