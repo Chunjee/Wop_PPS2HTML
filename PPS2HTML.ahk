@@ -9,7 +9,7 @@
 ;Compile Options
 ;~~~~~~~~~~~~~~~~~~~~~
 StartUp()
-Version = Pre v2.0
+Version = v2.0
 
 ;Dependencies
 #Include %A_ScriptDir%\Functions
@@ -27,10 +27,17 @@ Version = Pre v2.0
 ;Startup special global variables
 Sb_GlobalNameSpace()
 
-;Import Existing Track DB File
-FileRead, MemoryFile, %Options_DBLocation%\DB.json
-AllTracks_Array := Fn_JSONtooOBJ(MemoryFile)
 
+;Load the config file and check that it loaded the last line
+settings = %A_ScriptDir%\config.ini
+Fn_InitializeIni(settings)
+Fn_LoadIni(settings)
+	If (Ini_Loaded != 1)
+	{
+	Msgbox, Citizen! There was a problem reading the config.ini file. PPS2HTML will quit for your protection. (Copy a working replacement config.ini file to the same directory as PPS2HTML)
+	ExitApp
+	}
+	
 
 GUI()
 ;Clear the old html.txt ;added some filesize checking for added safety
@@ -44,16 +51,15 @@ g_HMTLFile = %A_ScriptDir%\html.txt
 	
 	}
 
+;Import Existing Track DB File
+FileCreateDir, %Options_DBLocation%
+FileRead, The_MemoryFile, %Options_DBLocation%\DB.json
+AllTracks_Array := Fn_JSONtooOBJ(The_MemoryFile)
+;Msgbox % The_MemoryFile
+The_MemoryFile :=
 
-;Load the config file and check that it loaded the last line
-settings = %A_ScriptDir%\config.ini
-Fn_InitializeIni(settings)
-Fn_LoadIni(settings)
-	If (Ini_Loaded != 1)
-	{
-	Msgbox, Citizen! There was a problem reading the config.ini file. PPS2HTML will quit for your protection. (Copy a working replacement config.ini file to the same directory as PPS2HTML)
-	ExitApp
-	}
+;For Debugging. Show contents of the Array 
+;Array_Gui(AllTracks_Array)
 
 ;DEPRECIATED. File will always have a date
 	;Get Tomorrows name to be used in HTML
@@ -118,8 +124,10 @@ Loop, %A_ScriptDir%\*.pdf {
 	TrackTLA := RE_SimoCentralFile4
 	Ini_Key := Fn_FindTrackIniKey(TrackTLA)
 	
-	;Now Trackname will be 'Warwick' in the case of [GB]_WAR
+	;Now Trackname will be 'Warwick' in the case of [GB]_WAR. Convert Spaces to Underscores
 	TrackName := %Ini_Key%_%TrackTLA%
+	TrackName := Fn_ReplaceString(" ", "_", TrackName)
+	
 	The_DateTrack = %RE_SimoCentralFile1%%RE_SimoCentralFile2%%RE_SimoCentralFile3%%TrackName%
 	Fn_InsertData(Ini_Key, TrackName, The_DateTrack, A_LoopFileName)
 	
@@ -161,15 +169,55 @@ Fn_Export("Japan")
 	Fn_Export(section%A_Index%)
 	}
 
-;For Debugging. Show contents of the Array 
-Array_Gui(AllTracks_Array)
 
+
+
+;Kick Array items over 30 days old out
+	LastMonth :=
+	LastMonth += -30, d
+	StringTrimRight, LastMonth, LastMonth, 6
+Loop, 33
+{
+	Loop % AllTracks_Array.MaxIndex()
+	{
+	l_DateTrack := AllTracks_Array[A_Index,"DateTrack"]
+	;Convert data out of l_DateTrack to get the weekdayname and new format of timestamp
+	l_WeekdayName := Fn_GetWeekName(l_DateTrack)
+	
+	;See if array item is new enough to stay in the array
+	FileTimeStamp := Fn_JustGetDate(l_DateTrack)
+	;Msgbox, %A_Index% %l_FileTimeStamp% > %l_Today%
+		If (FileTimeStamp < LastMonth)
+		{
+		;Msgbox, %FileTimeStamp% is older than today: %LastMonth%`; removing
+		AllTracks_Array.Remove(A_Index)
+		Break
+		;Must break out because A_Index will no longer corrilate to correct array index
+		}
+	}
+}
+
+;For Debugging. Show contents of the Array 
+;Array_Gui(AllTracks_Array)
 
 
 ;Export Array as a JSON file
-MemoryFile := Fn_JSONfromOBJ(AllTracks_Array)
+The_MemoryFile := Fn_JSONfromOBJ(AllTracks_Array)
 FileDelete, %Options_DBLocation%\DB.json
-FileAppend, %MemoryFile%, %Options_DBLocation%\DB.json
+FileAppend, %The_MemoryFile%, %Options_DBLocation%\DB.json
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -363,7 +411,7 @@ Fn_JustGetDate(para_String)
 	RegexMatch(para_String, "(\d{4})(\d{2})(\d{2})", RE_TimeStamp)
 	If (RE_TimeStamp1 != "")
 	{
-	l_TimeStamp = %RE_TimeStamp1%%RE_TimeStamp2%%RE_TimeStamp3%000000
+	l_TimeStamp = %RE_TimeStamp1%%RE_TimeStamp2%%RE_TimeStamp3%
 	Return %l_TimeStamp%
 	}
 ;Else
@@ -502,24 +550,27 @@ Global AllTracks_Array
 		l_WeekdayName := Fn_GetWeekName(l_DateTrack)
 		l_TimeFormat := Fn_GetModifiedDate(l_DateTrack)
 		
-		l_FileTimeStamp := Fn_JustGetDate(l_DateTrack)
-		l_Today := %A_YYYY%%A_MM%%A_DD%
-			If(l_FileTimeStamp <= %l_Today%)
-			{
-			Msgbox, %l_FileTimeStamp% is older than today: %l_Today%`; skipping
-			Continue
-			}
-			
 		;Move file with new name; overwriting if necessary
 		l_NewFileName = %l_TrackName%%l_TimeFormat%-li.pdf
+		;l_NewFileName := Fn_ReplaceString(" ", "_", l_NewFileName) ;PATIENCE! See further below where HTML is appended
 		FileMove, %A_ScriptDir%\%l_OldFileName%, %A_ScriptDir%\%l_NewFileName%, 1
 			;If the filemove was unsuccessful for any reason, tell user
 			If (Errorlevel) 
 			{
 			Msgbox, There was a problem renaming the %l_OldFileName% file. Permissions\FileInUse
 			}
-			
 		
+		;See if array item is new enough to be used in HTML
+		l_FileTimeStamp := Fn_JustGetDate(l_DateTrack)
+		l_Today = %A_YYYY%%A_MM%%A_DD%
+			If (l_FileTimeStamp < l_Today)
+			{
+			;Msgbox, %l_FileTimeStamp% is older than today: %l_Today%`; removing
+			;Need to remove the item from the array here at some point
+			;AllTracks_Array.Remove(A_Index)
+			Continue
+			}
+			
 		l_TrackName := Fn_ReplaceString("_", " ", l_TrackName)
 		l_Key := Fn_ReplaceString("_", " ", l_Key)
 		;If the TrackName matches the Key, only output day in the HTML Name (This is for Australia/New Zealand/Japan
@@ -531,9 +582,6 @@ Global AllTracks_Array
 			l_CurrentLine = <a href="[current-domain:forms-url]%l_NewFileName%" target="_blank">%l_TrackName%, %l_WeekdayName% PPs</a><br />
 			}
 		Fn_InsertText(l_CurrentLine)
-		
-
-			
 		}
 	
 	}
