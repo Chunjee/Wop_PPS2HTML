@@ -157,19 +157,39 @@ Loop, %A_ScriptDir%\*.pdf {
 
 ;Sort all Array Content by DateTrack
 Fn_Sort2DArrayFast(AllTracks_Array, "DateTrack")
-
+	LineText = -=TVG 3 Drupal=-----------------------------------------------------------------------
+	Fn_InsertText(LineText)
 ;Export Each Track type to HTML.txt; also handles renaming files
 ;Aus and NZ must be handled explicitly
-Fn_Export("Australia")
-Fn_Export("New_Zealand")
-Fn_Export("Japan")
+Fn_Export("Australia", "[current-domain:forms-url]")
+Fn_Export("New_Zealand", "[current-domain:forms-url]")
+Fn_Export("Japan", "[current-domain:forms-url]")
 	;Loop all others
 	Loop, %inisections%
 	{
-	Fn_Export(section%A_Index%)
+	Fn_Export(section%A_Index%, "[current-domain:forms-url]")
 	}
 
+	
 
+	
+	
+;;; Do the same kind of thing but for TVG2 as the 2nd parameter, put some space between the two would ya?
+	Fn_InsertBlank(void)
+	Fn_InsertBlank(void)
+	Fn_InsertBlank(void)
+	LineText = -=TVG 2=-----------------------------------------------------------------------
+	Fn_InsertText(LineText)
+Fn_Export("Australia", "https://www.tvg.com/forms/")
+Fn_Export("New_Zealand", "https://www.tvg.com/forms/")
+Fn_Export("Japan", "https://www.tvg.com/forms/")
+
+	Loop, %inisections%
+	{
+	Fn_Export(section%A_Index%, "https://www.tvg.com/forms/")
+	}
+	
+	
 
 
 ;Kick Array items over 30 days old out
@@ -515,8 +535,9 @@ l_ExistsAlreadyFlag := 0
 }
 
 
-Fn_Export(para_Key) {
+Fn_Export(para_Key, para_URLLead) {
 Global AllTracks_Array
+Global FirstGBLoop
 
 	;Create HTML Title if any of that kind of track exist
 	AllTracks_ArraX = 0
@@ -575,11 +596,30 @@ Global AllTracks_Array
 		l_Key := Fn_ReplaceString("_", " ", l_Key)
 		;If the TrackName matches the Key, only output day in the HTML Name (This is for Australia/New Zealand/Japan
 			If (l_TrackName = l_Key) {
-			l_CurrentLine = <a href="[current-domain:forms-url]%l_NewFileName%" target="_blank">%l_WeekdayName% PPs</a><br />
+			l_CurrentLine = <a href="%para_URLLead%%l_NewFileName%" target="_blank">%l_WeekdayName% PPs</a><br />
+			;<a href="[current-domain:forms-url]%l_NewFileName%" target="_blank">%l_WeekdayName% PPs</a><br />
 			}
 			Else
 			{
-			l_CurrentLine = <a href="[current-domain:forms-url]%l_NewFileName%" target="_blank">%l_TrackName%, %l_WeekdayName% PPs</a><br />
+			l_CurrentLine = <a href="%para_URLLead%%l_NewFileName%" target="_blank">%l_TrackName%, %l_WeekdayName% PPs</a><br />
+			;<a href="[current-domain:forms-url]%l_NewFileName%" target="_blank">%l_TrackName%, %l_WeekdayName% PPs</a><br />
+			}
+			
+			;Check for UK/IRE and insert a </ br> if needed between dates
+			If (AllTracks_Array[A_Index,"Key"] = "UK#IRE")
+			{
+				If (FirstGBLoop = 1)
+				{
+				LastDate := l_WeekdayName ;My understanding is that this var "LastDate" is local but somehow it is remembered each time. Interesting.
+				FirstGBLoop := 0
+				}
+				If (LastDate != l_WeekdayName)
+				{
+				br := "<br />"
+				Fn_InsertText(br)
+				LastDate := l_WeekdayName
+				}
+				
 			}
 		Fn_InsertText(l_CurrentLine)
 		}
@@ -669,4 +709,5 @@ global
 
 AllTracks_Array := {Key:"", TrackName:"", DateTrack:"", FileName:""}
 AllTracks_ArraX = 1
+FirstGBLoop = 1
 }
