@@ -9,7 +9,7 @@
 ;Compile Options
 ;~~~~~~~~~~~~~~~~~~~~~
 StartUp()
-Version = v2.0
+Version = v2.1
 
 ;Dependencies
 #Include %A_ScriptDir%\Functions
@@ -539,11 +539,15 @@ Fn_Export(para_Key, para_URLLead) {
 Global AllTracks_Array
 Global FirstGBLoop
 
+l_Today = %A_YYYY%%A_MM%%A_DD%
+
 	;Create HTML Title if any of that kind of track exist
 	AllTracks_ArraX = 0
 	Loop % AllTracks_Array.MaxIndex()
 	{
-		If (para_key = AllTracks_Array[A_Index,"Key"] )
+	l_FileTimeStamp := Fn_JustGetDate(AllTracks_Array[A_Index,"DateTrack"])
+		;Only add HTML title if [Key] Tracks are in the array AND are scheduled today or greater
+		If (para_key = AllTracks_Array[A_Index,"Key"] && l_FileTimeStamp >= l_Today)
 		{
 		AllTracks_ArraX += 1
 		}
@@ -583,7 +587,6 @@ Global FirstGBLoop
 		
 		;See if array item is new enough to be used in HTML
 		l_FileTimeStamp := Fn_JustGetDate(l_DateTrack)
-		l_Today = %A_YYYY%%A_MM%%A_DD%
 			If (l_FileTimeStamp < l_Today)
 			{
 			;Msgbox, %l_FileTimeStamp% is older than today: %l_Today%`; removing
@@ -594,7 +597,7 @@ Global FirstGBLoop
 			
 		l_TrackName := Fn_ReplaceString("_", " ", l_TrackName)
 		l_Key := Fn_ReplaceString("_", " ", l_Key)
-		;If the TrackName matches the Key, only output day in the HTML Name (This is for Australia/New Zealand/Japan
+		;If the TrackName matches the Key, only output day in the HTML Name (This is for Australia/New Zealand/Japan)
 			If (l_TrackName = l_Key) {
 			l_CurrentLine = <a href="%para_URLLead%%l_NewFileName%" target="_blank">%l_WeekdayName% PPs</a><br />
 			;<a href="[current-domain:forms-url]%l_NewFileName%" target="_blank">%l_WeekdayName% PPs</a><br />
