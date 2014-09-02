@@ -9,7 +9,7 @@
 ;Compile Options
 ;~~~~~~~~~~~~~~~~~~~~~
 StartUp()
-Version = v2.1
+Version = v2.2
 
 ;Dependencies
 #Include %A_ScriptDir%\Functions
@@ -27,7 +27,6 @@ Version = v2.1
 ;Startup special global variables
 Sb_GlobalNameSpace()
 
-
 ;Load the config file and check that it loaded the last line
 settings = %A_ScriptDir%\config.ini
 Fn_InitializeIni(settings)
@@ -37,7 +36,11 @@ Fn_LoadIni(settings)
 	Msgbox, Citizen! There was a problem reading the config.ini file. PPS2HTML will quit for your protection. (Copy a working replacement config.ini file to the same directory as PPS2HTML)
 	ExitApp
 	}
-	
+
+;Just a quick conversion
+Options_TVG3PrefixURL := Fn_ReplaceString("{", "[", Options_TVG3PrefixURL)
+Options_TVG3PrefixURL := Fn_ReplaceString("}", "]", Options_TVG3PrefixURL)
+
 
 GUI()
 ;Clear the old html.txt ;added some filesize checking for added safety
@@ -157,13 +160,13 @@ Loop, %A_ScriptDir%\*.pdf {
 
 ;Sort all Array Content by DateTrack
 Fn_Sort2DArrayFast(AllTracks_Array, "DateTrack")
-	LineText = -=TVG 3 Drupal=-----------------------------------------------------------------------
+	LineText = <!--=TVG 3 Drupal=---------------------------------------->
 	Fn_InsertText(LineText)
 ;Export Each Track type to HTML.txt; also handles renaming files
 ;Aus and NZ must be handled explicitly
-Fn_Export("Australia", "[current-domain:forms-url]")
-Fn_Export("New_Zealand", "[current-domain:forms-url]")
-Fn_Export("Japan", "[current-domain:forms-url]")
+Fn_Export("Australia", Options_TVG3PrefixURL)
+Fn_Export("New_Zealand", Options_TVG3PrefixURL)
+Fn_Export("Japan", Options_TVG3PrefixURL)
 	;Loop all others
 	Loop, %inisections%
 	{
@@ -178,15 +181,15 @@ Fn_Export("Japan", "[current-domain:forms-url]")
 	Fn_InsertBlank(void)
 	Fn_InsertBlank(void)
 	Fn_InsertBlank(void)
-	LineText = -=TVG 2=-----------------------------------------------------------------------
+	LineText = <!--=TVG 2=---------------------------------------->
 	Fn_InsertText(LineText)
-Fn_Export("Australia", "https://www.tvg.com/forms/")
-Fn_Export("New_Zealand", "https://www.tvg.com/forms/")
-Fn_Export("Japan", "https://www.tvg.com/forms/")
+Fn_Export("Australia", Options_TVG2PrefixURL)
+Fn_Export("New_Zealand", Options_TVG2PrefixURL)
+Fn_Export("Japan", Options_TVG2PrefixURL)
 
 	Loop, %inisections%
 	{
-	Fn_Export(section%A_Index%, "https://www.tvg.com/forms/")
+	Fn_Export(section%A_Index%, Options_TVG2PrefixURL)
 	}
 	
 	
@@ -268,7 +271,7 @@ If (Options_OldTVG3HTML = 1)
 	;Label TVG3 Section of HTML
 	FileAppend,
 	(
-	-=TVG 3=---------------------
+	<!--=TVG 3=---------------------------------------->
 	), %A_ScriptDir%\html.txt
 	Fn_InsertBlank(void)
 	;Label Australia Section of HTML
@@ -343,7 +346,7 @@ If (Options_OldTVG2HTML = 1)
 	Fn_InsertBlank(void)
 	
 	;Label for TVG2
-	LineText = -=TVG 2=---------------------
+	LineText = <!--=TVG 2=---------------------------------------->
 	Fn_InsertText(LineText)
 	FileAppend,`n      Australia\New Zealand`n, %A_ScriptDir%\html.txt
 	Fn_InsertBlank(void)
