@@ -9,13 +9,14 @@
 ;Compile Options
 ;~~~~~~~~~~~~~~~~~~~~~
 StartUp()
-Version = v2.2
+Version_Name = v2.3
 
 ;Dependencies
 #Include %A_ScriptDir%\Functions
 #Include inireadwrite
 #Include sort_arrays
 #Include json_obj
+#Include util_misc
 
 ;For Debug Only
 #Include util_arrays
@@ -26,9 +27,10 @@ Version = v2.2
 
 ;Startup special global variables
 Sb_GlobalNameSpace()
+Sb_InstallFiles()
 
 ;Load the config file and check that it loaded the last line
-settings = %A_ScriptDir%\config.ini
+settings = %A_ScriptDir%\Data\config.ini
 Fn_InitializeIni(settings)
 Fn_LoadIni(settings)
 	If (Ini_Loaded != 1)
@@ -93,7 +95,18 @@ Loop, %A_ScriptDir%\*.pdf {
 	regexmatch(A_LoopFileName, "NZpp(\d\d)(\d\d)\.", RE_NZ)
 	If (RE_NZ1 != "") {
 	The_DateTrack = 20%Options_Year%%RE_NZ1%%RE_NZ2%New_Zealand
-	Fn_InsertData("New_Zealand", "New_Zealand", The_DateTrack, A_LoopFileName)
+	
+	;Export PDF to Text, so we can read the trackname
+	FileCopy, %A_ScriptDir%\Data\PDFtoTEXT, %A_ScriptDir%\Data\PDFtoTEXT.exe
+	RunWait, %comspec% /c %A_ScriptDir%\Data\PDFtoTEXT.exe %A_LoopFileFullPath% %A_ScriptDir%\Data\Temp\%A_LoopFileName%.txt,,Hide
+	FileDelete, %A_ScriptDir%\Data\PDFtoTEXT.exe
+	
+	;Read the Trackname out of the Converted Text
+	FileRead, File_PDFTEXT, %A_ScriptDir%\Data\Temp\%A_LoopFileName%.txt
+	FileDelete, %A_ScriptDir%\Data\Temp\%A_LoopFileName%.txt
+	TrackName := Fn_QuickRegEx(File_PDFTEXT,"New Zealand \((\D+)\)")
+	
+	Fn_InsertData("New_Zealand", TrackName, The_DateTrack, A_LoopFileName)
 	}
 }
 
@@ -108,9 +121,7 @@ Loop, %A_ScriptDir%\*.pdf {
 		The_DateTrack = 20%RE_JP3%%RE_JP1%%RE_JP2%Japan
 		Fn_InsertData("Japan", "Japan", The_DateTrack, A_LoopFileName)
 		}
-		
 	}
-	
 }
 
 
@@ -141,15 +152,8 @@ Loop, %A_ScriptDir%\*.pdf {
 		Msgbox, There was no corresponding track found for %TrackTLA%, please update the config.ini file and run again. `n `n You should have something like this: `n[Key]`n %TrackTLA%=Track Name
 		ExitApp
 		}
-		
 	}
-	
 }
-
-
-
-;Ask user to confirm weekday name
-;InputBox, g_WeekdayName , Weekday name, %A_Tab%%A_Space%%A_Space%%A_Space%%A_Space%%A_Space% %Version%, , 180, 120, X, Y, , , %g_WeekdayName%
 
 
 
@@ -170,7 +174,7 @@ Fn_Export("Japan", Options_TVG3PrefixURL)
 	;Loop all others
 	Loop, %inisections%
 	{
-	Fn_Export(section%A_Index%, "[current-domain:forms-url]")
+	Fn_Export(section%A_Index%, Options_TVG3PrefixURL)
 	}
 
 	
@@ -391,13 +395,14 @@ If (Options_OldTVG2HTML = 1)
 	;take space out of FileName and put into a new variable so that the html link will match the no space filename
 
 	}
-
 	FileAppend,<br \>, %A_ScriptDir%\html.txt
-
 }
+;Add Done Message
+Gui, Font, s14 w700, Arial
+Gui, Add, Text, x2 y30 w220 h40 cGreen +Center, Done!
 
-;Finished, exit after short nap
-Sleep 1000
+;Finished, exit after 40 second nap
+Sleep 40000
 ExitApp
 
 
@@ -612,14 +617,14 @@ l_Today = %A_YYYY%%A_MM%%A_DD%
 			}
 			
 			;Check for UK/IRE and insert a </ br> if needed between dates
-			If (AllTracks_Array[A_Index,"Key"] = "UK#IRE")
+			If (AllTracks_Array[A_Index,"Key"] = "UK#IRE" || AllTracks_Array[A_Index,"Key"] = "New_Zealand")
 			{
 				If (FirstGBLoop = 1)
 				{
 				LastDate := l_WeekdayName ;My understanding is that this var "LastDate" is local but somehow it is remembered each time. Interesting.
 				FirstGBLoop := 0
 				}
-				If (LastDate != l_WeekdayName)
+				If (LastDate != l_WeekdayName && AllTracks_Array[A_Index,"Key"] = "UK#IRE")
 				{
 				br := "<br />"
 				Fn_InsertText(br)
@@ -677,9 +682,9 @@ GUI()
 global
 ;Title
 Gui, Font, s14 w70, Arial
-Gui, Add, Text, x2 y4 w220 h40 +Center, PPS2HTML
+Gui, Add, Text, x2 y4 w220 +Center, PPS2HTML
 Gui, Font, s10 w70, Arial
-Gui, Add, Text, x168 y0 w50 h20 +Right, %Version%
+Gui, Add, Text, x168 y0 w50 +Right, %Version_Name%
 
 
 ;User Input
@@ -696,13 +701,45 @@ Gui, Add, Text, x168 y0 w50 h20 +Right, %Version%
 ;Large Progress Bar UNUSED
 ;Gui, Add, Progress, x4 y130 w480 h20 , 100
 
-Gui, Show, h30 w220, PPS2HTML
+Gui, Show, h80 w220, PPS2HTML
+
+
+;Menu
+Menu, FileMenu, Add, E&xit`tCtrl+Q, Menu_File-Quit
+Menu, MenuBar, Add, &File, :FileMenu  ; Attach the sub-menu that was created above
+
+Menu, HelpMenu, Add, &About, Menu_About
+Menu, HelpMenu, Add, &Confluence`tCtrl+H, Menu_Confluence
+Menu, MenuBar, Add, &Help, :HelpMenu
+
+Gui, Menu, MenuBar
+Return
+
+;Menu Shortcuts
+Menu_Confluence:
+Run http://confluence.tvg.com/pages/viewpage.action?pageId=11075658
+Return
+
+Menu_About:
+Msgbox, Renames Free PP files and generated HTML from all files run through the system. `n%Version_Name%
+Return
+
+Menu_File-Quit:
+ExitApp
 }
 
 
 ;/--\--/--\--/--\--/--\--/--\
 ; Subroutines
 ;\--/--\--/--\--/--\--/--\--/
+
+;Create Directory and install needed file(s)
+Sb_InstallFiles()
+{
+FileCreateDir, %A_ScriptDir%\Data\
+FileCreateDir, %A_ScriptDir%\Data\Temp\
+FileInstall, Data\PDFtoTEXT, %A_ScriptDir%\Data\PDFtoTEXT, 1
+}
 
 ;No Tray icon because it takes 2 seconds; Do not allow running more then one instance at a time
 StartUp() {
@@ -713,6 +750,7 @@ StartUp() {
 Sb_GlobalNameSpace() {
 global
 
+Path_PDFtoHTML = %A_ScriptDir%\Data\
 AllTracks_Array := {Key:"", TrackName:"", DateTrack:"", FileName:""}
 AllTracks_ArraX = 1
 FirstGBLoop = 1
