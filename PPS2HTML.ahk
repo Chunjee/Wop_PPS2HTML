@@ -9,7 +9,7 @@
 ;Compile Options
 ;~~~~~~~~~~~~~~~~~~~~~
 StartUp()
-Version_Name = v2.3
+Version_Name = v2.4.1
 
 ;Dependencies
 #Include %A_ScriptDir%\Functions
@@ -25,11 +25,11 @@ Version_Name = v2.3
 ; StartUp
 ;\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/
 
-;Startup special global variables
+;;Startup special global variables
 Sb_GlobalNameSpace()
 Sb_InstallFiles()
 
-;Load the config file and check that it loaded the last line
+;;Load the config file and check that it loaded completely
 settings = %A_ScriptDir%\Data\config.ini
 Fn_InitializeIni(settings)
 Fn_LoadIni(settings)
@@ -45,7 +45,7 @@ Options_TVG3PrefixURL := Fn_ReplaceString("}", "]", Options_TVG3PrefixURL)
 
 
 GUI()
-;Clear the old html.txt ;added some filesize checking for added safety
+;;Clear the old html.txt ;added some filesize checking for added safety
 g_HMTLFile = %A_ScriptDir%\html.txt
 	IfExist, %g_HMTLFile%
 	{
@@ -53,14 +53,12 @@ g_HMTLFile = %A_ScriptDir%\html.txt
 		If (HTMLSize <= 2) {
 		FileDelete, %g_HMTLFile%
 		}
-	
 	}
 
-;Import Existing Track DB File
+;;Import Existing Track DB File
 FileCreateDir, %Options_DBLocation%
 FileRead, The_MemoryFile, %Options_DBLocation%\DB.json
 AllTracks_Array := Fn_JSONtooOBJ(The_MemoryFile)
-;Msgbox % The_MemoryFile
 The_MemoryFile :=
 
 ;For Debugging. Show contents of the Array 
@@ -74,15 +72,15 @@ The_MemoryFile :=
 
 
 ;/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\
-; Import Files into Memory Array
+; MAIN
 ;\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/
-
+;; Read each pdf file in the same directory and save it to the Track DB if it matches the expected filename pattern. See Confluence table
 
 
 ;### AUSTRALIA--------------------------------------------
 Loop, %A_ScriptDir%\*.pdf {
-	;Is this track Aus? They all have "ppAB" in the name; EX: DOOppAB0527.pdf
-	regexmatch(A_LoopFileName, "ppAB(\d\d)(\d\d)\.", RE_Aus)
+	;;Is this track Aus? They all have "ppAB" in the filename; EX: DOOppAB0527.pdf
+	RegExMatch(A_LoopFileName, "ppAB(\d\d)(\d\d)\.", RE_Aus)
 	If (RE_Aus1 != "") {
 	The_DateTrack = 20%Options_Year%%RE_Aus1%%RE_Aus2%Australia
 	Fn_InsertData("Australia", "Australia", The_DateTrack, A_LoopFileName)
@@ -91,32 +89,40 @@ Loop, %A_ScriptDir%\*.pdf {
 
 ;### NEW ZEALAND--------------------------------------------
 Loop, %A_ScriptDir%\*.pdf {
-	;Is this track New Zealand? They all have "NZpp" in the name
-	regexmatch(A_LoopFileName, "NZpp(\d\d)(\d\d)\.", RE_NZ)
+	;;Is this track New Zealand? They all have "NZpp" in the filename
+	RegExMatch(A_LoopFileName, "NZpp(\d\d)(\d\d)\.", RE_NZ)
 	If (RE_NZ1 != "") {
 	The_DateTrack = 20%Options_Year%%RE_NZ1%%RE_NZ2%New_Zealand
 	
-	;Export PDF to Text, so we can read the trackname
+	;; NZ files get exported to txt, so we can read the trackname
 	FileCopy, %A_ScriptDir%\Data\PDFtoTEXT, %A_ScriptDir%\Data\PDFtoTEXT.exe
 	RunWait, %comspec% /c %A_ScriptDir%\Data\PDFtoTEXT.exe %A_LoopFileFullPath% %A_ScriptDir%\Data\Temp\%A_LoopFileName%.txt,,Hide
 	FileDelete, %A_ScriptDir%\Data\PDFtoTEXT.exe
 	
-	;Read the Trackname out of the Converted Text
+	Sleep, 200
+	;;Read the Trackname out of the Converted Text, after a short rest
 	FileRead, File_PDFTEXT, %A_ScriptDir%\Data\Temp\%A_LoopFileName%.txt
 	FileDelete, %A_ScriptDir%\Data\Temp\%A_LoopFileName%.txt
-	TrackName := Fn_QuickRegEx(File_PDFTEXT,"New Zealand \((\D+)\)")
-	
+	TrackName := Fn_QuickRegEx(File_PDFTEXT,"New Zealand \(([\w ]+)\)")
+		If (TrackName = "null") {
+		Msgbox, couldn't extract NZ trackname from file: %A_LoopFileName%. Troubleshoot or process manually.
+		Continue
+		}
+		If (InStr(TrackName,")")) {
+		Msgbox, The trackname found contains ")" which would be a problem. Alert PPS2HTML author for improvements required.
+		Continue
+		}
+	TrackName := Fn_ReplaceString(" ", "_", TrackName)
 	Fn_InsertData("New_Zealand", TrackName, The_DateTrack, A_LoopFileName)
 	}
 }
 
 ;### JAPAN--------------------------------------------
 Loop, %A_ScriptDir%\*.pdf {
-	;Is this track Japan? They all have "Japan" in the name
-	If (InStr(A_LoopFileName, "Japan"))
-	{
+	;;Is this track Japan? They all have "Japan" in the filename
+	If (InStr(A_LoopFileName, "Japan"))	{
 		;Grab the date
-		regexmatch(A_LoopFileName, "(\d{2}).*(\d{2}).*(\d{2})", RE_JP)
+		RegExMatch(A_LoopFileName, "(\d{2}).*(\d{2}).*(\d{2})", RE_JP)
 		If (RE_JP1 != "") {
 		The_DateTrack = 20%RE_JP3%%RE_JP1%%RE_JP2%Japan
 		Fn_InsertData("Japan", "Japan", The_DateTrack, A_LoopFileName)
@@ -128,8 +134,8 @@ Loop, %A_ScriptDir%\*.pdf {
 
 ;### All Simo Central----------------
 Loop, %A_ScriptDir%\*.pdf {
-	;Is this track from Simo Central? They all have "_INTER_IRE." in the name; EX: 20140526DR(D)_INTER.pdf
-	regexmatch(A_LoopFileName, "(\d\d\d\d)(\d\d)(\d\d)(\D+)\(D\)_INTER", RE_SimoCentralFile)
+	;;Is this track from Simo Central? They all have "_INTER_IRE." in the filename; EX: 20140526DR(D)_INTER.pdf
+	RegExMatch(A_LoopFileName, "(\d\d\d\d)(\d\d)(\d\d)(\D+)\(D\)_INTER", RE_SimoCentralFile)
 	;RE_1 is 2014; RE_2 is month; RE_3 is day; RE_4 is track code, usually 2 or 3 letters.
 	
 	
@@ -147,7 +153,7 @@ Loop, %A_ScriptDir%\*.pdf {
 	
 	StringReplace, TrackName, TrackName, %A_SPACE%, _, All
 	
-		;If [Key]_TLA has no associated track; tell user and exit
+		;;If [Key]_TLA has no associated track; tell user and exit
 		If (TrackName = "") {
 		Msgbox, There was no corresponding track found for %TrackTLA%, please update the config.ini file and run again. `n `n You should have something like this: `n[Key]`n %TrackTLA%=Track Name
 		ExitApp
@@ -162,12 +168,12 @@ Loop, %A_ScriptDir%\*.pdf {
 ;\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/
 
 
-;Sort all Array Content by DateTrack
+;;Sort all Array Content by DateTrack ; No not do in descending order as this will flip the output. Sat,Fri,Thur instead on Thur,Fri,Sat
 Fn_Sort2DArrayFast(AllTracks_Array, "DateTrack")
 	LineText = <!--=TVG 3 Drupal=---------------------------------------->
 	Fn_InsertText(LineText)
-;Export Each Track type to HTML.txt; also handles renaming files
-;Aus and NZ must be handled explicitly
+;;Export Each Track type to HTML.txt; also handles renaming files
+;;Aus, NZ, and Japan must be handled explicitly because they don't follow SimoCentral rules
 Fn_Export("Australia", Options_TVG3PrefixURL)
 Fn_Export("New_Zealand", Options_TVG3PrefixURL)
 Fn_Export("Japan", Options_TVG3PrefixURL)
@@ -181,22 +187,22 @@ Fn_Export("Japan", Options_TVG3PrefixURL)
 
 	
 	
-;;; Do the same kind of thing but for TVG2 as the 2nd parameter, put some space between the two would ya?
+;; Export all the tracks again in basic HTML format if user specified TVG2HTML = 1 in their config file
+	If (Options_TVG2HTML = 1) {
 	Fn_InsertBlank(void)
 	Fn_InsertBlank(void)
 	Fn_InsertBlank(void)
 	LineText = <!--=TVG 2=---------------------------------------->
 	Fn_InsertText(LineText)
-Fn_Export("Australia", Options_TVG2PrefixURL)
-Fn_Export("New_Zealand", Options_TVG2PrefixURL)
-Fn_Export("Japan", Options_TVG2PrefixURL)
+	Fn_Export("Australia", Options_TVG2PrefixURL)
+	Fn_Export("New_Zealand", Options_TVG2PrefixURL)
+	Fn_Export("Japan", Options_TVG2PrefixURL)
 
-	Loop, %inisections%
-	{
-	Fn_Export(section%A_Index%, Options_TVG2PrefixURL)
+		Loop, %inisections%
+		{
+		Fn_Export(section%A_Index%, Options_TVG2PrefixURL)
+		}
 	}
-	
-	
 
 
 ;Kick Array items over 30 days old out
@@ -256,11 +262,7 @@ FileAppend, %The_MemoryFile%, %Options_DBLocation%\DB.json
 ; Old HTML Generation
 ;\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/
 
-
-;~~~~~~~~~~~~~~~~~~~~~
-; TVG3 HTML
-;~~~~~~~~~~~~~~~~~~~~~
-
+;; Export all the tracks again in NON-DRUPAL format if user specified OldTVG3HTML = 1 in their config file
 If (Options_OldTVG3HTML = 1)
 {
 	;Insert Blank area for separation between TVG3 and TVG2
@@ -312,7 +314,7 @@ If (Options_OldTVG3HTML = 1)
 	If (InStr(A_LoopFileName, "Australia") || InStr(A_LoopFileName, "New_Zealand")) {
 		Continue
 		}
-	regexmatch(A_LoopFileName, "(\D+)\d+-li", RE_TrackName)
+	RegExMatch(A_LoopFileName, "(\D+)\d+-li", RE_TrackName)
 		If (RE_TrackName != "")	{
 		TrackName := RE_TrackName1
 		StringReplace, TrackName, TrackName, _, %A_SPACE%, All
@@ -338,6 +340,7 @@ If (Options_OldTVG3HTML = 1)
 ; TVG2 HTML
 ;~~~~~~~~~~~~~~~~~~~~~
 
+;; Export all the tracks again in NON-DRUPAL Basic format if user specified OldTVG2HTML = 1 in their config file
 If (Options_OldTVG2HTML = 1)
 {
 	;Insert Blank area for separation between TVG3 and TVG2
@@ -379,7 +382,7 @@ If (Options_OldTVG2HTML = 1)
 		}
 		
 		
-		regexmatch(A_LoopFileName, "(\D+)\d+-li", RE_TrackName)
+		RegExMatch(A_LoopFileName, "(\D+)\d+-li", RE_TrackName)
 		If (RE_TrackName != "")	{
 		TrackName := RE_TrackName1
 		StringReplace, TrackName, TrackName, _, %A_SPACE%, All
@@ -417,7 +420,7 @@ ExitApp
 Fn_GetWeekName(para_String) ;Example Input: "20140730Scottsville"
 {
 
-regexmatch(para_String, "(\d{4})(\d{2})(\d{2})", RE_TimeStamp)
+RegExMatch(para_String, "(\d{4})(\d{2})(\d{2})", RE_TimeStamp)
 	If (RE_TimeStamp1 != "") {
 	;dddd corresponds to Monday for example
 	FormatTime, l_WeekdayName , %RE_TimeStamp1%%RE_TimeStamp2%%RE_TimeStamp3%, dddd
@@ -436,7 +439,7 @@ regexmatch(para_String, "(\d{4})(\d{2})(\d{2})", RE_TimeStamp)
 Fn_JustGetDate(para_String)
 {
 ;local
-	RegexMatch(para_String, "(\d{4})(\d{2})(\d{2})", RE_TimeStamp)
+	RegExMatch(para_String, "(\d{4})(\d{2})(\d{2})", RE_TimeStamp)
 	If (RE_TimeStamp1 != "")
 	{
 	l_TimeStamp = %RE_TimeStamp1%%RE_TimeStamp2%%RE_TimeStamp3%
@@ -449,7 +452,7 @@ Return ERROR
 Fn_GetWeekNameOLD(para_String) ;Example Input: "073014Scottsville"
 {
 
-regexmatch(para_String, "(\d{2})(\d{2})(\d{2})", RE_TimeStamp)
+RegExMatch(para_String, "(\d{2})(\d{2})(\d{2})", RE_TimeStamp)
 	If (RE_TimeStamp1 != "")
 	{
 	;dddd corresponds to Monday for example
@@ -469,7 +472,7 @@ Return "ERROR"
 Fn_GetModifiedDate(para_String) ;Example Input: "20140730Scottsville"
 {
 
-regexmatch(para_String, "20(\d{2})(\d{2})(\d{2})", RE_TimeStamp)
+RegExMatch(para_String, "20(\d{2})(\d{2})(\d{2})", RE_TimeStamp)
 	If (RE_TimeStamp1 != "") {
 	l_NewDateFormat = %RE_TimeStamp2%%RE_TimeStamp3%%RE_TimeStamp1%
 	Return l_NewDateFormat
@@ -484,7 +487,9 @@ regexmatch(para_String, "20(\d{2})(\d{2})(\d{2})", RE_TimeStamp)
 
 Fn_FindTrackIniKey(para_TrackCode)
 {
-	Loop, Read, %A_ScriptDir%\config.ini 
+global settings
+
+	Loop, Read, %settings%
 	{
 		;Remember the INI key value for each section until a match has been found
 		IfInString, A_LoopReadLine, ]
@@ -538,8 +543,7 @@ l_ExistsAlreadyFlag := 0
 	AllTracks_Array[AllTracks_ArraX,"TrackName"] := para_TrackName
 	AllTracks_Array[AllTracks_ArraX,"DateTrack"] := para_DateTrack
 	AllTracks_Array[AllTracks_ArraX,"FileName"] := para_OldFileName
-	} 
-
+	}
 }
 
 
@@ -582,7 +586,10 @@ l_Today = %A_YYYY%%A_MM%%A_DD%
 		;Convert data out of l_DateTrack to get the weekdayname and new format of timestamp
 		l_WeekdayName := Fn_GetWeekName(l_DateTrack)
 		l_TimeFormat := Fn_GetModifiedDate(l_DateTrack)
-		
+			If (l_Key = "null" || l_TrackName = "null" || l_DateTrack = "null") {
+			Msgbox, there was a problem reading the data associated with %l_OldFileName%. Troubleshoot and try again.
+			Continue
+			}
 		;Move file with new name; overwriting if necessary
 		l_NewFileName = %l_TrackName%%l_TimeFormat%-li.pdf
 		;l_NewFileName := Fn_ReplaceString(" ", "_", l_NewFileName) ;PATIENCE! See further below where HTML is appended
@@ -597,9 +604,7 @@ l_Today = %A_YYYY%%A_MM%%A_DD%
 		l_FileTimeStamp := Fn_JustGetDate(l_DateTrack)
 			If (l_FileTimeStamp < l_Today)
 			{
-			;Msgbox, %l_FileTimeStamp% is older than today: %l_Today%`; removing
-			;Need to remove the item from the array here at some point
-			;AllTracks_Array.Remove(A_Index)
+			;Skip to next item because this is older than today
 			Continue
 			}
 			
@@ -619,7 +624,7 @@ l_Today = %A_YYYY%%A_MM%%A_DD%
 			;Check for UK/IRE and insert a </ br> if needed between dates
 			If (AllTracks_Array[A_Index,"Key"] = "UK#IRE" || AllTracks_Array[A_Index,"Key"] = "New_Zealand")
 			{
-				If (FirstGBLoop = 1)
+				If (FirstGBLoop = 1 && AllTracks_Array[A_Index,"Key"] = "UK#IRE")
 				{
 				LastDate := l_WeekdayName ;My understanding is that this var "LastDate" is local but somehow it is remembered each time. Interesting.
 				FirstGBLoop := 0
@@ -655,12 +660,6 @@ Fn_InsertText(l_CurrentLine)
 	l_CurrentLine = <a href="http://www.timeform.com/free/" target="_blank">TIMEFORM</a><br />
 	Fn_InsertText(l_CurrentLine)
 	}
-}
-
-
-Fn_ReplaceString(para_1,para_2,para_String) {
-StringReplace, l_Newstring, para_String, %para_1%, %para_2%, All
-Return l_Newstring
 }
 
 ;This function just inserts a line of text

@@ -1,4 +1,4 @@
-﻿; Version 0.1 by
+﻿; Version 0.3 by
 ;_________  __                   __             
 ;\    ___ \|  |__  __ __  ____  |__| ____  ____ 
 ;/    \  \/|  |  \|  |  \/    \ |  |/ __ \/ __ \
@@ -49,4 +49,35 @@ Debug_Msg(message)
 {
 Progress, 100, %message%, , , 
 ;Arial
+}
+
+
+Fn_ReplaceString(para_1,para_2,para_String) {
+StringReplace, l_Newstring, para_String, %para_1%, %para_2%, All
+Return l_Newstring
+}
+
+Fn_SearchArrayReturnOther(Obj,para_Search,para_SearchTable,para_ReturnTable)
+{
+	Loop % Obj.MaxIndex()
+	{
+		If(Obj[A_Index,para_SearchTable] = para_Search)
+		{
+		Return Obj[A_Index,para_ReturnTable]
+		}
+	}
+Return "null"
+}
+
+
+Fn_SearchArrayReturnTrue(Obj,para_Search,para_SearchTable)
+{
+	Loop % Obj.MaxIndex()
+	{
+		If(Obj[A_Index,para_SearchTable] = para_Search)
+		{
+		Return True
+		}
+	}
+Return False
 }
