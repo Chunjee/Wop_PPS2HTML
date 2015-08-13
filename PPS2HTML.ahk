@@ -8,6 +8,7 @@
 ;~~~~~~~~~~~~~~~~~~~~~
 ;Compile Options
 ;~~~~~~~~~~~~~~~~~~~~~
+;SetBatchLines -1 ;Go as fast as CPU will allow
 StartUp()
 Version_Name = v2.4.1
 
