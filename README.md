@@ -1,5 +1,5 @@
 ### Overview
-This is a program that automates Free Past Performance Sheet (FreePPs or "PPs") file renaming and html generation for use on TVG2 & 3. For the full PPs updating process, read Uploading and Updating Web Free Past Performance Sheets. The purpose of this program is to eliminate the possibility of human error when renaming files and editing html.
+This is a program that automates Free Past Performance Sheet (FreePPs or "PPs") file renaming and html generation for use on TVG2 & 3. The purpose of this program is to eliminate the possibility of human error when renaming files and editing html.
 
 The two required files should be located in the same dir
 *config.ini* (Contains all settings)
