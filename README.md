@@ -3,9 +3,9 @@ This is a program that automates Free Past Performance Sheet (FreePPs or "PPs") 
 
 The two required files should be located in the same dir
 
-*config.ini* (Contains all settings)
+**config.ini** (Contains all settings)
 
-*DB.json* (Database that contains track information from previous days; old data is automatically expunged after 33 days of age. This file can be deleted or moved in order to run a clean
+**DB.json** (Database that contains track information from previous days; old data is automatically expunged after 33 days of age. This file can be deleted or moved in order to run a clean)
 
 
 ### Example Use
@@ -20,7 +20,7 @@ The program reads from DB.json to build a list of tracks that are active today a
 The program settings are saved in config.ini   This primarily serves to store all track codes and their corresponding track name. They need to be organized under the track type but alphabetical order does not matter. If a PDF file does not match any track in the config file; the program will exit and prompt to add the track and retry. 
 
 As every track is added to the config file, this message will become less common.
-rack names may include spaces or dashes. If a track name includes spaces, *do not* substitute them with underscores.
+rack names may include spaces or dashes. If a track name includes spaces, **do not** substitute them with underscores.
 
 
 ### Warnings & Troubleshooting
