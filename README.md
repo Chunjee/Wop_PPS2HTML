@@ -2,7 +2,9 @@
 This is a program that automates Free Past Performance Sheet (FreePPs or "PPs") file renaming and html generation for use on TVG2 & 3. The purpose of this program is to eliminate the possibility of human error when renaming files and editing html.
 
 The two required files should be located in the same dir
+
 *config.ini* (Contains all settings)
+
 *DB.json* (Database that contains track information from previous days; old data is automatically expunged after 33 days of age. This file can be deleted or moved in order to run a clean
 
 
