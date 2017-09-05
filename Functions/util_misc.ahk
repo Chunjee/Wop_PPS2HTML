@@ -17,9 +17,9 @@ Fn_QuickRegEx(para_Input,para_RegEx,para_ReturnValue := 1)
 Return "null"
 }
 
-Fn_ReplaceString(para_1,para_2,para_String) {
-StringReplace, l_Newstring, para_String, %para_1%, %para_2%, All
-Return l_Newstring
+Fn_ReplaceString(para_1,para_2,para_String)
+{
+	Return	StrReplace(para_String, para_1, para_2)
 }
 
 Fn_InArray(Obj,para_Search,para_Table := "")
