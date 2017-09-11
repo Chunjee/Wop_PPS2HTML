@@ -346,7 +346,7 @@ Global
 		If (!InStr(l_OldFileName,".pdf")) {
 			Continue
 		}
-		Msgbox, moving %l_OldFileName% to %l_NewFileName%
+		;Msgbox, moving %l_OldFileName% to %l_NewFileName%
 		FileMove, %A_ScriptDir%\%l_OldFileName%, %A_ScriptDir%\%l_NewFileName%, 1
 		;If the filemove was unsuccessful for any reason, tell user
 		If (Errorlevel) {
@@ -473,41 +473,35 @@ Fn_InsertData(para_Key, para_TrackName, para_Date, para_OldFileName)
 {
 Global
 
-;Find out how big the array is currently
-AllTracks_ArraX := AllTracks_Array.MaxIndex()
-l_ExistsAlreadyFlag := 0
-	If (AllTracks_ArraX = "")
-	{
-	;Array is blank, start at 0
-	AllTracks_ArraX = 0
+	;Find out how big the array is currently
+	AllTracks_ArraX := AllTracks_Array.MaxIndex()
+	If (AllTracks_ArraX = "") {
+		;Array is blank, start at 0
+		AllTracks_ArraX = 0
 	}
 
 	;See if the Track/Date is already present in the array. If yes, do not insert again
-	Loop, %AllTracks_ArraX%
+	Loop, % AllTracks_Array.MaxIndex()
 	{
-		If (para_DateTrack . para_TrackName = AllTracks_Array[A_Index,"Date"] . AllTracks_Array[A_Index,"Track"]) {
-			;Msgbox, %para_DateTrack% exists in this array already
-			l_ExistsAlreadyFlag := 1
-		}
-	}
-	
-	If (l_ExistsAlreadyFlag = 0) {
-		AllTracks_ArraX += 1
-
-		If(!para_Date || !para_TrackName) {
+		If (para_Date . para_TrackName = AllTracks_Array[A_Index,"Date"] . AllTracks_Array[A_Index,"TrackName"]) {
+			;Msgbox, %para_TrackName% for %para_Date% already exists in this array
 			return
 		}
-		AllTracks_Array[AllTracks_ArraX,"Key"] := para_Key
-		AllTracks_Array[AllTracks_ArraX,"TrackName"] := para_TrackName
-		AllTracks_Array[AllTracks_ArraX,"Date"] := para_Date
-		AllTracks_Array[AllTracks_ArraX,"DateTrack"] := para_Date . para_TrackName
-		AllTracks_Array[AllTracks_ArraX,"FileName"] := para_OldFileName
-		AllTracks_Array[AllTracks_ArraX,"FinalFilename"] := Fn_Filename(para_TrackName, para_Date)
+	}
 
-		if (AllTracks_Array[AllTracks_ArraX,"Date"] = "null") {
-			Msgbox, % "FATAL ERROR WITH " AllTracks_Array[AllTracks_ArraX,"FinalFilename"] " - " para_DateTrack 
-			ExitApp
-		}
+	AllTracks_ArraX += 1
+	If(!para_Date || !para_TrackName) {
+		return
+	}
+	AllTracks_Array[AllTracks_ArraX,"Key"] := para_Key
+	AllTracks_Array[AllTracks_ArraX,"TrackName"] := para_TrackName
+	AllTracks_Array[AllTracks_ArraX,"Date"] := para_Date
+	AllTracks_Array[AllTracks_ArraX,"DateTrack"] := para_Date . para_TrackName
+	AllTracks_Array[AllTracks_ArraX,"FileName"] := para_OldFileName
+	AllTracks_Array[AllTracks_ArraX,"FinalFilename"] := Fn_Filename(para_TrackName, para_Date)
+	if (AllTracks_Array[AllTracks_ArraX,"Date"] = "null") {
+		Msgbox, % "FATAL ERROR WITH " AllTracks_Array[AllTracks_ArraX,"FinalFilename"] " - " para_DateTrack 
+		ExitApp
 	}
 }
 
