@@ -10,7 +10,8 @@
 ;~~~~~~~~~~~~~~~~~~~~~
 ;SetBatchLines -1 ;Go as fast as CPU will allow
 StartUp()
-Version_Name = v2.6.0
+The_ProjectName = PPS2HTML
+The_VersionName = v2.6.1
 
 ;Dependencies
 #Include %A_ScriptDir%\Functions
@@ -35,7 +36,7 @@ settings = %A_ScriptDir%\Data\config.ini
 Fn_InitializeIni(settings)
 Fn_LoadIni(settings)
 If (Ini_Loaded != 1) {
-	Msgbox, There was a problem reading the config.ini file. PPS2HTML will quit. (Copy a working replacement config.ini file to the same directory as PPS2HTML)
+	Msgbox, There was a problem reading the config.ini file. %The_ProjectName% will quit. (Copy a working replacement config.ini file to the same directory as %The_ProjectName%)
 	ExitApp
 }
 
@@ -122,7 +123,7 @@ Loop, %A_ScriptDir%\*.pdf {
 				Continue
 			}
 			If InStr(TrackName,")") {
-				Msgbox, The trackname found contains ")" which would be a problem. Alert PPS2HTML author for improvements required.
+				Msgbox, The trackname found contains ")" which would be a problem. Alert %The_ProjectName% author for improvements required.
 				Continue
 			}
 			If InStr(Country,"Australia") { 
@@ -145,6 +146,27 @@ Loop, %A_ScriptDir%\*.pdf {
 		If (RE_JP1 != "") {
 			The_Date = 20%RE_JP3%%RE_JP1%%RE_JP2%
 			Fn_InsertData("Japan", "Japan", The_Date, A_LoopFileName)
+			Continue
+		}
+	}
+
+
+	;### Other PDFs--------------------------------------------
+	;;Only handle when specified in config settings
+	If (Options_HandleExtraFiles = 1) {
+		;Skip any file already handled
+		Loop, % AllTracks_Array.MaxIndex() {
+			If (AllTracks_Array[A_Index,"FinalFilename"] = A_LoopFileName || AllTracks_Array[A_Index,"FileName"] = A_LoopFileName) { ;new and old file names
+				Continue 2
+			}
+		}
+		The_Date := Fn_ParseDate(A_LoopFileName)
+		;InputBox, UserInput_Country, %The_ProjectName%, Group/Country: (Examples- Australia, Melbourne Racing Cup, Other)
+		InputBox, UserInput_TrackName, %The_ProjectName%, Track Name:
+
+		If (The_Date && UserInput_TrackName != "") {
+			msgbox, % "Inserting " UserInput_TrackName " with a date of " The_Date " `nFilename:" A_LoopFileName
+			Fn_InsertData("Other", UserInput_TrackName, The_Date, A_LoopFileName)
 			Continue
 		}
 	}
@@ -207,6 +229,7 @@ If (Options_ExportDrupalHTML = 1) {
 	{
 		Fn_Export(section%A_Index%, Options_TVG3PrefixURL)
 	}
+	Fn_Export("Other", Options_TVG3PrefixURL)
 }
 	
 	
@@ -619,9 +642,9 @@ GUI()
 global
 ;Title
 Gui, Font, s14 w70, Arial
-Gui, Add, Text, x2 y4 w220 +Center, PPS2HTML
+Gui, Add, Text, x2 y4 w220 +Center, %The_ProjectName%
 Gui, Font, s10 w70, Arial
-Gui, Add, Text, x168 y0 w50 +Right, %Version_Name%
+Gui, Add, Text, x168 y0 w50 +Right, %The_VersionName%
 
 
 ;User Input
@@ -638,7 +661,7 @@ Gui, Add, Text, x168 y0 w50 +Right, %Version_Name%
 ;Large Progress Bar UNUSED
 ;Gui, Add, Progress, x4 y130 w480 h20 , 100
 
-Gui, Show, h80 w220, PPS2HTML
+Gui, Show, h80 w220, %The_ProjectName%
 
 
 ;Menu
@@ -658,7 +681,7 @@ Run https://betfairus.atlassian.net/wiki/spaces/wog/pages/10650365/Ops+Tool+-+PP
 Return
 
 Menu_About:
-Msgbox, Renames Free PP files and generated HTML from all files run through the system. `n%Version_Name%
+Msgbox, Renames Free PP files and generated HTML from all files run through the system. `n%The_VersionName%
 Return
 
 Menu_File-Quit:
