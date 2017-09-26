@@ -11,7 +11,7 @@
 ;SetBatchLines -1 ;Go as fast as CPU will allow
 StartUp()
 The_ProjectName = PPS2HTML
-The_VersionName = v2.6.1
+The_VersionName = v2.6.2
 
 ;Dependencies
 #Include %A_ScriptDir%\Functions
@@ -105,7 +105,7 @@ Loop, %A_ScriptDir%\*.pdf {
 	If (Fn_QuickRegEx(A_LoopFileName,"(\w{2,})pp\w{0,3}(\d{4})",2) != "null") {
 		RegExMatch(A_LoopFileName, "(\d\d)(\d\d)\.", RE_match)
 		If (RE_match1 != "") {
-			FileCopy, %A_ScriptDir%\Data\PDFtoTEXT, %A_ScriptDir%\Data\PDFtoTEXT.exe
+			;FileCopy, %A_ScriptDir%\Data\PDFtoTEXT, %A_ScriptDir%\Data\PDFtoTEXT.exe
 			RunWait, %comspec% /c %A_ScriptDir%\Data\PDFtoTEXT.exe %A_LoopFileFullPath% %A_ScriptDir%\Data\Temp\%A_LoopFileName%.txt,,Hide
 			
 			Sleep, 200
@@ -115,14 +115,17 @@ Loop, %A_ScriptDir%\*.pdf {
 			Country := Fn_QuickRegEx(File_PDFTEXT,"([A-Za-z ]{6,})\s+\(([A-Z][\w- ]+)\)")
 			TrackName := Fn_QuickRegEx(File_PDFTEXT,"([A-Za-z ]{6,})\s+\(([A-Z][\w- ]+)\)",2)
 			If (Country = "null") {
+				clipboard := File_PDFTEXT
 				Msgbox, couldn't extract Region from file: %A_LoopFileName%. Troubleshoot or process manually.
 				Continue
 			}
 			If (TrackName = "null") {
+				clipboard := File_PDFTEXT
 				Msgbox, couldn't extract trackname from file: %A_LoopFileName%. Troubleshoot or process manually.
 				Continue
 			}
 			If InStr(TrackName,")") {
+				clipboard := File_PDFTEXT
 				Msgbox, The trackname found contains ")" which would be a problem. Alert %The_ProjectName% author for improvements required.
 				Continue
 			}
@@ -199,6 +202,12 @@ loop, % AllTracks_Array.MaxIndex() {
 		thistrack.filename := AllTracks_Array[A_Index,"FinalFilename"]
 		thistrack.date := AllTracks_Array[A_Index,"Date"]
 		thistrack.group := AllTracks_Array[A_Index,"Key"]
+		If (AllTracks_Array[A_Index,"International"] = true) {
+			thistrack.international := true
+		} else {
+			thistrack.international := false
+		}
+		
 		;replace some yesteryear placeholder characters
 		thistrack.group := StrReplace(thistrack.group, "#" , "/")
 		thistrack.group := StrReplace(thistrack.group, "_" , " ")
@@ -341,8 +350,8 @@ If (Options_ExportOldTVG2HTML = 1)
 Gui, Font, s14 w700, Arial
 Gui, Add, Text, x2 y30 w220 h40 cGreen +Center, Done!
 
-;Finished, exit after 40 second nap
-Sleep 40000
+;Finished, exit after 3 second nap
+Sleep 3000
 ExitApp
 
 
@@ -512,16 +521,25 @@ Global
 		}
 	}
 
+	;International Track declaration
+	If (para_Key = "Other") {
+		this_internationaltrack := false
+	} else {
+		this_internationaltrack := true
+	}
+
 	AllTracks_ArraX += 1
-	If(!para_Date || !para_TrackName) {
+	If (!para_Date || !para_TrackName) {
 		return
 	}
+
 	AllTracks_Array[AllTracks_ArraX,"Key"] := para_Key
 	AllTracks_Array[AllTracks_ArraX,"TrackName"] := para_TrackName
 	AllTracks_Array[AllTracks_ArraX,"Date"] := para_Date
 	AllTracks_Array[AllTracks_ArraX,"DateTrack"] := para_Date . para_TrackName
 	AllTracks_Array[AllTracks_ArraX,"FileName"] := para_OldFileName
 	AllTracks_Array[AllTracks_ArraX,"FinalFilename"] := Fn_Filename(para_TrackName, para_Date)
+	AllTracks_Array[AllTracks_ArraX,"International"] := this_internationaltrack
 	if (AllTracks_Array[AllTracks_ArraX,"Date"] = "null") {
 		Msgbox, % "FATAL ERROR WITH " AllTracks_Array[AllTracks_ArraX,"FinalFilename"] " - " para_DateTrack 
 		ExitApp
