@@ -165,7 +165,7 @@ Loop, %A_ScriptDir%\*.pdf {
 		}
 		The_Date := Fn_ParseDate(A_LoopFileName)
 		;InputBox, UserInput_Country, %The_ProjectName%, Group/Country: (Examples- Australia, Melbourne Racing Cup, Other)
-		InputBox, UserInput_TrackName, %The_ProjectName%, Track Name:
+		InputBox, UserInput_TrackName, %The_ProjectName%, Track Name for the file %A_LoopFileName%: 
 
 		If (The_Date && UserInput_TrackName != "") {
 			msgbox, % "Inserting " UserInput_TrackName " with a date of " The_Date " `nFilename:" A_LoopFileName
