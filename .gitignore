@@ -223,3 +223,5 @@ pip-log.txt
 *.json
 Data/*
 html.txt
+html.txt
+Data/PDFtoTEXT
