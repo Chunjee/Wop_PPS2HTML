@@ -8,10 +8,10 @@
 ;~~~~~~~~~~~~~~~~~~~~~
 ;Compile Options
 ;~~~~~~~~~~~~~~~~~~~~~
-;SetBatchLines -1 ;Go as fast as CPU will allow
+SetBatchLines -1 ;Go as fast as CPU will allow
 StartUp()
 The_ProjectName = PPS2HTML
-The_VersionName = v2.6.2
+The_VersionName = v2.6.3
 
 ;Dependencies
 #Include %A_ScriptDir%\Functions
@@ -19,6 +19,7 @@ The_VersionName = v2.6.2
 #Include sort_arrays.ahk
 #Include json.ahk
 #Include util_misc.ahk
+#Include time.ahk
 
 ;For Debug Only
 #Include util_arrays.ahk
@@ -163,13 +164,27 @@ Loop, %A_ScriptDir%\*.pdf {
 				Continue 2
 			}
 		}
-		The_Date := Fn_ParseDate(A_LoopFileName)
+		The_Date := Fn_DateParser(A_LoopFileName)
+		If (Time(FormatTime(The_Date, "MM.dd.yyyy"),"","d") > 30) {
+			Msgbox, % A_LoopFileName " measured as 30+ days in the future. Check the date and try again.`n`n" A_LoopFileName "was interpreted as " FormatTime(The_Date, "LongDate")
+			Continue
+		}
+		longmessage := Time(FormatTime(The_Date, "MM.dd.yyyy"),"","d") . " days from now."
 		;InputBox, UserInput_Country, %The_ProjectName%, Group/Country: (Examples- Australia, Melbourne Racing Cup, Other)
-		InputBox, UserInput_TrackName, %The_ProjectName%, Track Name for the file %A_LoopFileName%: 
+		InputBox, UserInput_TrackName, %The_ProjectName%, % "Track Name for the file " A_LoopFileName ": `nPlease make sure the date '" The_Date "' is valid before pressing 'OK'`n`n" longmessage
+
+		KnownInternationalTracks := "BusanSeoulAustraliaZealand"
+		UserInput_International := 1
+		If (!InStr(KnownInternationalTracks, UserInput_TrackName)) {
+			InputBox, UserInput_International, %The_ProjectName%, % "Is this track international?`n`nYes/No"
+			If (InStr(UserInput_International, "n") || InStr(UserInput_International, "N")) {
+				UserInput_International := 0
+			}
+		}
 
 		If (The_Date && UserInput_TrackName != "") {
-			msgbox, % "Inserting " UserInput_TrackName " with a date of " The_Date " `nFilename:" A_LoopFileName
-			Fn_InsertData("Other", UserInput_TrackName, The_Date, A_LoopFileName)
+			;msgbox, % "Inserting " UserInput_TrackName " with a date of " The_Date " `nFilename:" A_LoopFileName 
+			Fn_InsertData("Other", UserInput_TrackName, The_Date, A_LoopFileName, UserInput_International)
 			Continue
 		}
 	}
@@ -242,7 +257,6 @@ If (Options_ExportDrupalHTML = 1) {
 }
 	
 	
-
 
 
 ;Kick Array items over 30 days old out
@@ -396,7 +410,6 @@ Global
 ;Gets the timestamp out of a filename and converts it into a full day of the week name
 Fn_GetWeekName(para_String) ;Example Input: "20140730Scottsville"
 {
-
 RegExMatch(para_String, "(\d{4})(\d{2})(\d{2})", RE_TimeStamp)
 	If (RE_TimeStamp1 != "") {
 		;dddd corresponds to Monday for example
@@ -404,9 +417,9 @@ RegExMatch(para_String, "(\d{4})(\d{2})(\d{2})", RE_TimeStamp)
 	}
 	If (l_WeekdayName != "") {
 		Return l_WeekdayName
-	} Else {
+	} else {
 		;Return a fat error is nothing is found
-		Msgbox, ERROR - %RE_TimeStamp1%%RE_TimeStamp2%%RE_TimeStamp3% - %para_String%
+		;Msgbox, ERROR - %RE_TimeStamp1%%RE_TimeStamp2%%RE_TimeStamp3% - %para_String%
 		Return "ERROR"
 	}
 }
@@ -418,9 +431,13 @@ Fn_RemoveDatedKeysInArray(para_Key,para_Array)
 	StringTrimRight, LastMonth, LastMonth, 6
 	Loop, 33
 	{
-		Loop % para_Array.MaxIndex()
-		{
+		Loop % para_Array.MaxIndex() {
 		l_DateTrack := para_Array[A_Index,para_Key]
+		If (!Fn_IsValidDate(para_Array[A_Index,"Date"])) {
+			Msgbox, % "Really kick out " . para_Array[A_Index,"FinalFilename"] . "?"
+			para_Array.Remove(A_Index)
+			Break
+		}
 		;Convert data out of l_DateTrack to get the weekdayname and new format of timestamp
 		l_WeekdayName := Fn_GetWeekName(l_DateTrack)
 		
@@ -501,7 +518,7 @@ Global settings
 
 
 ;This function inserts each track to an array that later gets sorted and exported to HTML
-Fn_InsertData(para_Key, para_TrackName, para_Date, para_OldFileName) 
+Fn_InsertData(para_Key, para_TrackName, para_Date, para_OldFileName, para_International := 1) 
 {
 Global
 
@@ -521,12 +538,8 @@ Global
 		}
 	}
 
-	;International Track declaration
-	If (para_Key = "Other") {
-		this_internationaltrack := false
-	} else {
-		this_internationaltrack := true
-	}
+	;;International Track declaration
+	;Just trusts para_International to be accurate
 
 	AllTracks_ArraX += 1
 	If (!para_Date || !para_TrackName) {
@@ -539,7 +552,7 @@ Global
 	AllTracks_Array[AllTracks_ArraX,"DateTrack"] := para_Date . para_TrackName
 	AllTracks_Array[AllTracks_ArraX,"FileName"] := para_OldFileName
 	AllTracks_Array[AllTracks_ArraX,"FinalFilename"] := Fn_Filename(para_TrackName, para_Date)
-	AllTracks_Array[AllTracks_ArraX,"International"] := this_internationaltrack
+	AllTracks_Array[AllTracks_ArraX,"International"] := para_International
 	if (AllTracks_Array[AllTracks_ArraX,"Date"] = "null") {
 		Msgbox, % "FATAL ERROR WITH " AllTracks_Array[AllTracks_ArraX,"FinalFilename"] " - " para_DateTrack 
 		ExitApp
