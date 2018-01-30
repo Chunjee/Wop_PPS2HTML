@@ -11,7 +11,7 @@
 SetBatchLines -1 ;Go as fast as CPU will allow
 StartUp()
 The_ProjectName = PPS2HTML
-The_VersionName = v2.6.3
+The_VersionName = 2.6.3
 
 ;Dependencies
 #Include %A_ScriptDir%\Functions
@@ -31,6 +31,7 @@ The_VersionName = v2.6.3
 ;;Startup special global variables
 Sb_GlobalNameSpace()
 Sb_InstallFiles()
+GUI()
 
 ;;Load the config file and check that it loaded completely
 settings = %A_ScriptDir%\Data\config.ini
@@ -46,7 +47,7 @@ Options_TVG3PrefixURL := Fn_ReplaceString("{", "[", Options_TVG3PrefixURL)
 Options_TVG3PrefixURL := Fn_ReplaceString("}", "]", Options_TVG3PrefixURL)
 
 
-GUI()
+
 ;;Clear the old html file ;added some filesize checking for added safety
 The_HMTLFile = %A_ScriptDir%\html.txt
 IfExist, %The_HMTLFile%
@@ -61,8 +62,8 @@ IfExist, %The_HMTLFile%
 FileCreateDir, %Options_DBLocation%
 FileRead, The_MemoryFile, %Options_DBLocation%\DB.json
 AllTracks_Array := JSON.parse(The_MemoryFile)
-The_MemoryFile :=
-
+The_MemoryFile := ;blank
+Return
 
 ;/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\
 ; MAIN
@@ -71,6 +72,7 @@ The_MemoryFile :=
 
 
 ;;Loop all pdfs
+Parse:
 Loop, %A_ScriptDir%\*.pdf {
 
 	;### All Simo Central----------------
@@ -95,7 +97,7 @@ Loop, %A_ScriptDir%\*.pdf {
 			;;If [Key]_TLA has no associated track; tell user and exit
 			If (TrackName = "") {
 				Msgbox, There was no corresponding track found for %TrackTLA%, please update the config.ini file and run again. `n `n You should have something like this: `n[Key]`n %TrackTLA%=Track Name
-				ExitApp
+				; ExitApp
 			}
 		}
 		Continue
@@ -196,9 +198,10 @@ Loop, %A_ScriptDir%\*.pdf {
 ;Fn_Sort2DArrayFast(AllTracks_Array, "DateTrack")
 Fn_Sort2DArray(AllTracks_Array,"Key")
 Fn_Sort2DArray(AllTracks_Array,"DateTrack")
-
+Return
 
 ;;Actually move and rename files now
+Rename:
 Sb_RenameFiles()
 
 
@@ -237,7 +240,7 @@ If (Options_ExportAdminConsole = 1) {
 
 
 ;/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\
-; New HTML Generation
+; HTML Generation
 ;\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/
 If (Options_ExportDrupalHTML = 1) {
 	LineText = <!--=TVG Drupal=---------------------------------------->
@@ -256,8 +259,6 @@ If (Options_ExportDrupalHTML = 1) {
 	Fn_Export("Other", Options_TVG3PrefixURL)
 }
 	
-	
-
 
 ;Kick Array items over 30 days old out
 Fn_RemoveDatedKeysInArray("DateTrack", AllTracks_Array)
@@ -273,103 +274,10 @@ FileAppend, %The_MemoryFile%, %Options_DBLocation%\DB.json
 
 
 
-
-
-
-
-
-
-
-
-
-;/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\
-; Super old Basic site formatting
-;\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/
-If (Options_ExportOldTVG2HTML = 1) {
-	Fn_InsertBlank(void)
-	Fn_InsertBlank(void)
-	Fn_InsertBlank(void)
-	LineText = <!--=TVG 2=---------------------------------------->
-	Fn_InsertText(LineText)
-	Fn_Export("Australia", Options_TVG2PrefixURL)
-	Fn_Export("New_Zealand", Options_TVG2PrefixURL)
-	Fn_Export("Japan", Options_TVG2PrefixURL)
-	;SimoCentral files
-	Loop, %inisections%
-	{
-		Fn_Export(section%A_Index%, Options_TVG2PrefixURL)
-	}
-}
-
-;~~~~~~~~~~~~~~~~~~~~~
-; TVG2 HTML
-;~~~~~~~~~~~~~~~~~~~~~
-;; Export all the tracks again in NON-DRUPAL Basic format if user specified OldTVG2HTML = 1 in their config file
-If (Options_ExportOldTVG2HTML = 1)
-{
-	;Insert Blank area for separation between TVG3 and TVG2
-	Loop, 6
-	{
-		Fn_InsertBlank(void)
-	}
-	
-	;Label for TVG2
-	LineText = <!--=TVG 2=---------------------------------------->
-	Fn_InsertText(LineText)
-	FileAppend,`n      Australia\New Zealand`n, % The_HMTLFile
-	Fn_InsertBlank(void)
-
-	;Loop for all Australia pdf files
-	Loop, %A_ScriptDir%\*.pdf {
-
-		If (InStr(A_LoopFileName, "Australia") || InStr(A_LoopFileName, "New_Zealand"))
-		{
-		g_FinalWeekdayName := Fn_GetWeekNameOLD(A_LoopFileName)
-		FileAppend,<a href="https://www.tvg.com/forms/%A_LoopFileName%" target="_blank">%g_FinalWeekdayName% PPs</a><br />`n, % The_HMTLFile
-		}
-	}
-
-
-	Fn_InsertBlank(void)
-	Fn_InsertBlank(void)
-	FileAppend,`n      Simo-Central Files`n, % The_HMTLFile
-	Fn_InsertBlank(void)
-
-
-	;Loop for all SimoCentral pdf files
-	Loop, %A_ScriptDir%\*.pdf {
-		If (InStr(A_LoopFileName, "Australia") || InStr(A_LoopFileName, "New_Zealand")) {
-			Continue
-		}
-		
-		RegExMatch(A_LoopFileName, "(\D+)\d+[-li]*", RE_TrackName) ; -li optional
-		If (RE_TrackName != "")	{
-		TrackName := RE_TrackName1
-		StringReplace, TrackName, TrackName, _, %A_SPACE%, All
-		StringReplace, A_LoopFileNameNoSpace, A_LoopFileName, %A_SPACE%, , All
-		g_FinalWeekdayName := Fn_GetWeekNameOLD(A_LoopFileName)
-		
-		FileAppend,
-	(
-	<a href="https://www.tvg.com/forms/%A_LoopFileNameNoSpace%" target="_blank">%Trackname%, %g_FinalWeekdayName% PPs</a><br />`n
-	), % The_HMTLFile
-		}
-
-	;take space out of FileName and put into a new variable so that the html link will match the no space filename
-
-	}
-	FileAppend,<br \>, % The_HMTLFile
-}
 ;Add Done Message
-Gui, Font, s14 w700, Arial
-Gui, Add, Text, x2 y30 w220 h40 cGreen +Center, Done!
-
-;Finished, exit after 3 second nap
-Sleep 3000
-ExitApp
-
-
-
+; Gui, Font, s14 w700, Arial
+; Gui, Add, Text, x2 y30 w220 h40 cGreen +Center, Done!
+Return
 
 ;/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\
 ; Subroutines
@@ -675,24 +583,23 @@ global
 Gui, Font, s14 w70, Arial
 Gui, Add, Text, x2 y4 w220 +Center, %The_ProjectName%
 Gui, Font, s10 w70, Arial
-Gui, Add, Text, x168 y0 w50 +Right, %The_VersionName%
+Gui, Add, Text, x168 y0 w50 +Right, v%The_VersionName%
+
+Gui, Font
 
 
-;User Input
-;Gui, Add, Text, x8 y110 w100 h30 +Right, Domain\Account:
-;Gui, Add, Edit, x110 y110 w100 h20 vThe_UserINPUT,
+Gui,Add,Button,x0 y60 w43 h24 gParse,PARSE ;gMySubroutine
+Gui,Add,Button,x50 y60 w120 h24 gRename,RENAME FILES ;gMySubroutine
 
-;Gui, Add, Text, x8 y135 w100 h30 +Right, Pass:
-;Gui, Add, Edit, x110 y135 w100 h20 Password vThe_PassINPUT,
+Gui,Add,Button,x200 y60 w143 h24,EDIT ASSOCIATION
+Gui,Add,Button,x350 y60 w143 h24,EDIT TRACK NAME
+Gui,Add,Button,x500 y60 w143 h24,EDIT DATE
 
-;Gui, Add, Button, x4 y30 w80 h40 gSelect, Select File
-;Gui, Add, Button, x84 y30 w130 h40 gRun default, Run
+Gui,Add,Button,x200 y60 w43 h24,DELETE RECORD
+Gui,Add,ListView,x0 y100 w240 h113,ListView
 
 
-;Large Progress Bar UNUSED
-;Gui, Add, Progress, x4 y130 w480 h20 , 100
-
-Gui, Show, h80 w220, %The_ProjectName%
+Gui,Show,h600 w800, %The_ProjectName%
 
 
 ;Menu
@@ -712,7 +619,7 @@ Run https://betfairus.atlassian.net/wiki/spaces/wog/pages/10650365/Ops+Tool+-+PP
 Return
 
 Menu_About:
-Msgbox, Renames Free PP files and generated HTML from all files run through the system. `n%The_VersionName%
+Msgbox, Renames Free PP files and generated HTML from all files run through the system. `nv%The_VersionName%
 Return
 
 Menu_File-Quit:
