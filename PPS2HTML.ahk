@@ -11,7 +11,7 @@
 SetBatchLines -1 ;Go as fast as CPU will allow
 StartUp()
 The_ProjectName = PPS2HTML
-The_VersionName = 2.6.3
+The_VersionName = 3.0.0
 
 ;Dependencies
 #Include %A_ScriptDir%\Functions
@@ -47,6 +47,21 @@ Options_TVG3PrefixURL := Fn_ReplaceString("{", "[", Options_TVG3PrefixURL)
 Options_TVG3PrefixURL := Fn_ReplaceString("}", "]", Options_TVG3PrefixURL)
 
 
+;;Import Existing Track DB File
+FileCreateDir, %Options_DBLocation%
+FileRead, The_MemoryFile, %Options_DBLocation%\DB.json
+AllTracks_Array := JSON.parse(The_MemoryFile)
+if (!AllTracks_Array) {
+	AllHorses_Array := []
+}
+The_MemoryFile := ;blank
+
+
+;/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\
+; MAIN
+;\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/
+;;Loop all pdfs
+Parse:
 
 ;;Clear the old html file ;added some filesize checking for added safety
 The_HMTLFile = %A_ScriptDir%\html.txt
@@ -58,21 +73,6 @@ IfExist, %The_HMTLFile%
 	}
 }
 
-;;Import Existing Track DB File
-FileCreateDir, %Options_DBLocation%
-FileRead, The_MemoryFile, %Options_DBLocation%\DB.json
-AllTracks_Array := JSON.parse(The_MemoryFile)
-The_MemoryFile := ;blank
-Return
-
-;/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\
-; MAIN
-;\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/
-;; Read each pdf file in the same directory and save it to the Track DB if it matches the expected filename pattern. See Confluence table
-
-
-;;Loop all pdfs
-Parse:
 Loop, %A_ScriptDir%\*.pdf {
 
 	;### All Simo Central----------------
@@ -168,12 +168,12 @@ Loop, %A_ScriptDir%\*.pdf {
 		}
 		The_Date := Fn_DateParser(A_LoopFileName)
 		If (Time(FormatTime(The_Date, "MM.dd.yyyy"),"","d") > 30) {
-			Msgbox, % A_LoopFileName " measured as 30+ days in the future. Check the date and try again.`n`n" A_LoopFileName "was interpreted as " FormatTime(The_Date, "LongDate")
-			Continue
+			; Msgbox, % A_LoopFileName " measured as 30+ days in the future. Check the date and try again.`n`n" A_LoopFileName "was interpreted as " FormatTime(The_Date, "LongDate")
+			; Continue
 		}
 		longmessage := Time(FormatTime(The_Date, "MM.dd.yyyy"),"","d") . " days from now."
 		;InputBox, UserInput_Country, %The_ProjectName%, Group/Country: (Examples- Australia, Melbourne Racing Cup, Other)
-		InputBox, UserInput_TrackName, %The_ProjectName%, % "Track Name for the file " A_LoopFileName ": `nPlease make sure the date '" The_Date "' is valid before pressing 'OK'`n`n" longmessage
+		InputBox, UserInput_TrackName, %The_ProjectName%, % "Track Name for the file " A_LoopFileName ": `nPlease make sure the date '" The_Date "' is valid before pressing 'OK'`nYou can also fix the date in the GUI`n" longmessage
 
 		KnownInternationalTracks := "BusanSeoulAustraliaZealand"
 		UserInput_International := 1
@@ -198,16 +198,17 @@ Loop, %A_ScriptDir%\*.pdf {
 ;Fn_Sort2DArrayFast(AllTracks_Array, "DateTrack")
 Fn_Sort2DArray(AllTracks_Array,"Key")
 Fn_Sort2DArray(AllTracks_Array,"DateTrack")
-Return
 
-;;Actually move and rename files now
-Rename:
-Sb_RenameFiles()
+LV_Delete()
+; Array_Gui(AllTracks_Array)
+Loop, % AllTracks_Array.MaxIndex() {
+	LV_Add("",AllTracks_Array[A_Index,"TrackName"],AllTracks_Array[A_Index,"Key"],AllTracks_Array[A_Index,"Date"],AllTracks_Array[A_Index,"DateTrack"])
+}
+LV_ModifyCol()
 
 
-;;Generate HTML and JSON outputs as specified by user
 ;/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\
-; Upload JSON Generation
+; JSON Generation
 ;\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/
 FormatTime, Today, , yyyyMMdd
 FileDelete, %A_ScriptDir%\%Options_AdminConsoleFileName%
@@ -237,6 +238,8 @@ loop, % AllTracks_Array.MaxIndex() {
 If (Options_ExportAdminConsole = 1) {
 	FileAppend, % JSON.stringify(Data_json), %A_ScriptDir%\%Options_AdminConsoleFileName%
 }
+
+
 
 
 ;/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\
@@ -272,11 +275,59 @@ The_MemoryFile := JSON.stringify(AllTracks_Array)
 FileDelete, %Options_DBLocation%\DB.json
 FileAppend, %The_MemoryFile%, %Options_DBLocation%\DB.json
 
+;;ALL DONE
+Return
 
 
-;Add Done Message
-; Gui, Font, s14 w700, Arial
-; Gui, Add, Text, x2 y30 w220 h40 cGreen +Center, Done!
+;/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\
+; Buttons
+;\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/
+Click:
+selected := LV_GetNext(1, Focused)
+if (selected > 0) { ;If a number
+	LV_GetText(RowText, selected, 3) ;Date
+	msgtext := "Please enter a new date in YYYYMMDD format"
+	InputBox, UserInput, %msgtext%, %msgtext%, , , , , , , ,%RowText%
+	AllTracks_Array[selected,"Date"] := UserInput
+	Goto, Parse
+}
+Return
+
+EditAssoc:
+selected := LV_GetNext(1, Focused)
+if (selected > 0) {
+	LV_GetText(RowText, selected, 2) ;Date
+	msgtext := "Please enter a new Association (Australia, UK#IRE, etc)"
+	InputBox, UserInput, %msgtext%, %msgtext%, , , , , , , ,%RowText%
+	AllTracks_Array[selected,"Key"] := UserInput
+	Goto, Parse
+}
+Return
+
+EditName:
+selected := LV_GetNext(1, Focused)
+if (selected > 0) {
+	LV_GetText(RowText, selected, 1) ;TrackName
+	msgtext := "Please enter a new Trackname"
+	InputBox, UserInput, %msgtext%, %msgtext%, , , , , , , ,%RowText%
+	AllTracks_Array[selected,"TrackName"] := UserInput
+	Goto, Parse
+}
+Return
+
+
+Delete:
+selected := LV_GetNext(1, Focused)
+if (selected > 0) {
+	AllTracks_Array[selected,"Date"] := 20160101
+	AllTracks_Array.Remove(selected)
+	Goto, Parse
+}
+Return
+
+;;Actually move and rename files now
+Rename:
+Sb_RenameFiles()
 Return
 
 ;/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\
@@ -588,16 +639,16 @@ Gui, Add, Text, x168 y0 w50 +Right, v%The_VersionName%
 Gui, Font
 
 
-Gui,Add,Button,x0 y60 w43 h24 gParse,PARSE ;gMySubroutine
-Gui,Add,Button,x50 y60 w120 h24 gRename,RENAME FILES ;gMySubroutine
+Gui,Add,Button,x0 y60 w43 h30 gParse,PARSE ;gMySubroutine
+Gui,Add,Button,x50 y60 w120 h30 gRename,RENAME FILES ;gMySubroutine
 
-Gui,Add,Button,x200 y60 w143 h24,EDIT ASSOCIATION
-Gui,Add,Button,x350 y60 w143 h24,EDIT TRACK NAME
-Gui,Add,Button,x500 y60 w143 h24,EDIT DATE
+Gui,Add,Button,x200 y60 w143 h30 gEditAssoc,EDIT ASSOC
+Gui,Add,Button,x350 y60 w143 h30 gEditName,EDIT TRACK NAME
+Gui,Add,Button,x500 y60 w143 h30 gClick,EDIT DATE
 
-Gui,Add,Button,x200 y60 w43 h24,DELETE RECORD
-Gui,Add,ListView,x0 y100 w240 h113,ListView
-
+Gui,Add,Button,x650 y60 w143 h30 gDelete,DELETE RECORD
+Gui,Add,ListView,x0 y100 w800 h450 Grid NoSort gClick NoSortvGUI_Listview, Track|Assoc|Date|DateTrack
+	; Gui, Add, ListView, x2 y70 w490 h536 Grid NoSort +ReDraw gDoubleClick vGUI_Listview, #|Status|RC|Name|Race|
 
 Gui,Show,h600 w800, %The_ProjectName%
 
