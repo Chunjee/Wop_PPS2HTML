@@ -11,7 +11,7 @@
 SetBatchLines -1 ;Go as fast as CPU will allow
 StartUp()
 The_ProjectName = PPS2HTML
-The_VersionName = 3.0.0
+The_VersionName = 3.0.1
 
 ;Dependencies
 #Include %A_ScriptDir%\Functions
@@ -20,6 +20,7 @@ The_VersionName = 3.0.0
 #Include json.ahk
 #Include util_misc.ahk
 #Include time.ahk
+#Include wrappers.ahk
 
 ;For Debug Only
 #Include util_arrays.ahk
@@ -74,7 +75,6 @@ IfExist, %The_HMTLFile%
 }
 
 Loop, %A_ScriptDir%\*.pdf {
-
 	;### All Simo Central----------------
 	;;Is this track from Simo Central? They all have "_INTER" in the filename; EX: 20140526DR(D)_INTER.pdf
 	If (Fn_QuickRegEx(A_LoopFileName,"(_INTER)") != "null") {
@@ -143,6 +143,16 @@ Loop, %A_ScriptDir%\*.pdf {
 		}
 	}
 
+	The_TrackCode := Fn_QuickRegEx(A_LoopFileName,"(\D+)(\d{8})D-\${4}-RF11",1)
+	The_TrackDate := Fn_QuickRegEx(A_LoopFileName,"(\D+)(\d{8})D-\${4}-RF11",2)
+	Ini_Key := Fn_FindTrackIniKey(The_TrackCode)
+	TrackName := %Ini_Key%_%The_TrackCode%
+	TrackName := Fn_ReplaceString(" ", "_", TrackName)
+	If (TrackName != "" && The_TrackDate != "null") {
+		msgbox, % "inserting " TrackName
+		Fn_InsertData("France", TrackName, The_TrackDate, A_LoopFileName)
+		Continue
+	}
 
 	;### JAPAN--------------------------------------------
 	;;Is this track Japan? They all have "Japan" in the filename
@@ -473,6 +483,7 @@ Global settings
 		Return %l_CurrentIniKey%
 		}
 	}
+	Return "null"
 }
 
 
