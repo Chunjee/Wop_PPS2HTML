@@ -11,7 +11,7 @@
 SetBatchLines -1 ;Go as fast as CPU will allow
 StartUp()
 The_ProjectName = PPS2HTML
-The_VersionName = 3.0.1
+The_VersionName = 3.0.2
 
 ;Dependencies
 #Include %A_ScriptDir%\Functions
@@ -81,7 +81,6 @@ Loop, %A_ScriptDir%\*.pdf {
 		RegExMatch(A_LoopFileName, "(\d{4})(\d{2})(\d{2})(\D{2,})\(D\)_INTER", RE_SimoCentralFile)
 		;RE_1 is 2014; RE_2 is month; RE_3 is day; RE_4 is track code, usually 2 or 3 letters.
 		
-		
 		If (RE_SimoCentralFile1 != "") {
 		;If RegEx was a successful match, Find the Ini_[Key] in config.ini
 		TrackTLA := RE_SimoCentralFile4
@@ -90,17 +89,16 @@ Loop, %A_ScriptDir%\*.pdf {
 		;Now Trackname will be 'Warwick' in the case of [GB]_WAR. Convert Spaces to Underscores
 		TrackName := %Ini_Key%_%TrackTLA%
 		TrackName := Fn_ReplaceString(" ", "_", TrackName)
-		
-		The_Date = %RE_SimoCentralFile1%%RE_SimoCentralFile2%%RE_SimoCentralFile3%
-		Fn_InsertData(Ini_Key, TrackName, The_Date, A_LoopFileName)
-		StringReplace, TrackName, TrackName, %A_SPACE%, _, All
+		The_Date = %RE_SimoCentralFile1%%RE_SimoCentralFile2%%RE_SimoCentralFile3%		
 			;;If [Key]_TLA has no associated track; tell user and exit
 			If (TrackName = "") {
 				Msgbox, There was no corresponding track found for %TrackTLA%, please update the config.ini file and run again. `n `n You should have something like this: `n[Key]`n %TrackTLA%=Track Name
-				; ExitApp
+				Continue
+			} else {
+				Fn_InsertData(Ini_Key, TrackName, The_Date, A_LoopFileName)		
+				Continue
 			}
 		}
-		Continue
 	}
 
 	;### Attempt All Sky Racing--------------------------------------------
@@ -144,12 +142,11 @@ Loop, %A_ScriptDir%\*.pdf {
 	}
 
 	The_TrackCode := Fn_QuickRegEx(A_LoopFileName,"(\D+)(\d{8})D-\${4}-RF11",1)
-	The_TrackDate := Fn_QuickRegEx(A_LoopFileName,"(\D+)(\d{8})D-\${4}-RF11",2)
+	The_TrackDate := Fn_DateParser(Fn_QuickRegEx(A_LoopFileName,"(\D+)(\d{8})D-\${4}-RF11",2))
 	Ini_Key := Fn_FindTrackIniKey(The_TrackCode)
 	TrackName := %Ini_Key%_%The_TrackCode%
 	TrackName := Fn_ReplaceString(" ", "_", TrackName)
 	If (TrackName != "" && The_TrackDate != "null") {
-		msgbox, % "inserting " TrackName
 		Fn_InsertData("France", TrackName, The_TrackDate, A_LoopFileName)
 		Continue
 	}
@@ -166,7 +163,6 @@ Loop, %A_ScriptDir%\*.pdf {
 		}
 	}
 
-
 	;### Other PDFs--------------------------------------------
 	;;Only handle when specified in config settings
 	If (Options_HandleExtraFiles = 1) {
@@ -177,11 +173,15 @@ Loop, %A_ScriptDir%\*.pdf {
 			}
 		}
 		The_Date := Fn_DateParser(A_LoopFileName)
-		If (Time(FormatTime(The_Date, "MM.dd.yyyy"),"","d") > 30) {
-			; Msgbox, % A_LoopFileName " measured as 30+ days in the future. Check the date and try again.`n`n" A_LoopFileName "was interpreted as " FormatTime(The_Date, "LongDate")
-			; Continue
+		If (The_Date = 0) {
+			InputBox, The_Date, %The_ProjectName%, % "Enter the racedate for " A_LoopFileName ": `nPlease format as YYYYMMDD"
+			The_Date := Fn_DateParser(The_Date)
 		}
-		longmessage := Time(FormatTime(The_Date, "MM.dd.yyyy"),"","d") . " days from now."
+		If (DateDiff(The_Date, A_Now,"days") > 30) {
+			Msgbox, % A_LoopFileName " measured as 30+ days in the future. Check the date and try again.`n`n" A_LoopFileName "was interpreted as " FormatTime(The_Date, "LongDate")
+			Continue
+		}
+		longmessage := DateDiff(The_Date, A_Now,"days") . " days from now."
 		;InputBox, UserInput_Country, %The_ProjectName%, Group/Country: (Examples- Australia, Melbourne Racing Cup, Other)
 		InputBox, UserInput_TrackName, %The_ProjectName%, % "Track Name for the file " A_LoopFileName ": `nPlease make sure the date '" The_Date "' is valid before pressing 'OK'`nYou can also fix the date in the GUI`n" longmessage
 
@@ -193,9 +193,8 @@ Loop, %A_ScriptDir%\*.pdf {
 				UserInput_International := 0
 			}
 		}
-
-		If (The_Date && UserInput_TrackName != "") {
-			;msgbox, % "Inserting " UserInput_TrackName " with a date of " The_Date " `nFilename:" A_LoopFileName 
+		; Insert data if acceptable input
+		If (UserInput_TrackName != "") {
 			Fn_InsertData("Other", UserInput_TrackName, The_Date, A_LoopFileName, UserInput_International)
 			Continue
 		}
