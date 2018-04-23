@@ -11,7 +11,7 @@
 SetBatchLines -1 ;Go as fast as CPU will allow
 StartUp()
 The_ProjectName = PPS2HTML
-The_VersionName = 3.0.2
+The_VersionName = 3.1.1
 
 ;Dependencies
 #Include %A_ScriptDir%\Functions
@@ -141,13 +141,14 @@ Loop, %A_ScriptDir%\*.pdf {
 		}
 	}
 
-	The_TrackCode := Fn_QuickRegEx(A_LoopFileName,"(\D+)(\d{8})D-\${4}-RF11",1)
-	The_TrackDate := Fn_DateParser(Fn_QuickRegEx(A_LoopFileName,"(\D+)(\d{8})D-\${4}-RF11",2))
+	;### FRANCE--------------------------------------------
+	The_TrackCode := Fn_QuickRegEx(A_LoopFileName,"([a-zA-Z]{3,4}).*(\d{8})\D*-\${4}-RF11") ;This is catching France Tracks
+	The_Date := Fn_DateParser(Fn_QuickRegEx(A_LoopFileName,"([a-zA-Z]{3,4}).*(\d{8})\D*-\${4}-RF11",2))
 	Ini_Key := Fn_FindTrackIniKey(The_TrackCode)
 	TrackName := %Ini_Key%_%The_TrackCode%
 	TrackName := Fn_ReplaceString(" ", "_", TrackName)
-	If (TrackName != "" && The_TrackDate != "null") {
-		Fn_InsertData("France", TrackName, The_TrackDate, A_LoopFileName)
+	If (TrackName != "" && The_Date != false) { ;If NOT empty for both
+		Fn_InsertData("France", TrackName, The_Date, A_LoopFileName)
 		Continue
 	}
 
@@ -158,6 +159,7 @@ Loop, %A_ScriptDir%\*.pdf {
 		RegExMatch(A_LoopFileName, "(\d{2}).*(\d{2}).*(\d{2})", RE_JP)
 		If (RE_JP1 != "") {
 			The_Date = 20%RE_JP3%%RE_JP1%%RE_JP2%
+			The_Date = Fn_DateParser(The_Date)
 			Fn_InsertData("Japan", "Japan", The_Date, A_LoopFileName)
 			Continue
 		}
@@ -191,9 +193,13 @@ Loop, %A_ScriptDir%\*.pdf {
 			InputBox, UserInput_International, %The_ProjectName%, % "Is this track international?`n`nYes/No"
 			If (InStr(UserInput_International, "n") || InStr(UserInput_International, "N")) {
 				UserInput_International := 0
-			}
+			} ;else handled above
 		}
 		; Insert data if acceptable input
+		If (InStr("BusanSeoul", UserInput_TrackName) && UserInput_TrackName != "") {
+			Fn_InsertData("Korea", UserInput_TrackName, The_Date, A_LoopFileName, UserInput_International)
+			Continue
+		}
 		If (UserInput_TrackName != "") {
 			Fn_InsertData("Other", UserInput_TrackName, The_Date, A_LoopFileName, UserInput_International)
 			Continue
@@ -205,13 +211,17 @@ Loop, %A_ScriptDir%\*.pdf {
 
 ;Sort all Array Content by DateTrack ; No not do in descending order as this will flip the output. Sat,Fri,Thur
 ;Fn_Sort2DArrayFast(AllTracks_Array, "DateTrack")
-Fn_Sort2DArray(AllTracks_Array,"Key")
 Fn_Sort2DArray(AllTracks_Array,"DateTrack")
+Fn_Sort2DArray(AllTracks_Array,"Key")
 
+
+FormatTime, Today, , yyyyMMdd
 LV_Delete()
 ; Array_Gui(AllTracks_Array)
+LV_Add("","","","","")
 Loop, % AllTracks_Array.MaxIndex() {
-	LV_Add("",AllTracks_Array[A_Index,"TrackName"],AllTracks_Array[A_Index,"Key"],AllTracks_Array[A_Index,"Date"],AllTracks_Array[A_Index,"DateTrack"])
+	if (Today <= AllTracks_Array[A_Index,"Date"])
+	LV_Add("",A_Index,AllTracks_Array[A_Index,"TrackName"],AllTracks_Array[A_Index,"Key"],AllTracks_Array[A_Index,"Date"])
 }
 LV_ModifyCol()
 
@@ -255,20 +265,36 @@ If (Options_ExportAdminConsole = 1) {
 ; HTML Generation
 ;\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/
 If (Options_ExportDrupalHTML = 1) {
-	LineText = <!--=TVG Drupal=---------------------------------------->
+	LineText := "<!--=TVG Drupal=---------------------------------------->"
 	Fn_InsertText(LineText)
-	;;Export Each Track type to HTML; also handles renaming files
-	;;Aus, NZ, and Japan must be handled explicitly because they don't follow SimoCentral rules
-	Fn_Export("Australia", Options_TVG3PrefixURL)
-	Fn_Export("New_Zealand", Options_TVG3PrefixURL)
-	Fn_Export("South Korea", Options_TVG3PrefixURL)
-	Fn_Export("Japan", Options_TVG3PrefixURL)
-	;Loop all others
-	Loop, %inisections%
-	{
-		Fn_Export(section%A_Index%, Options_TVG3PrefixURL)
+	
+	
+	Keys := []
+	Loop, % AllTracks_Array.MaxIndex() {
+		x := AllTracks_Array[A_Index,"Key"]
+		if (Fn_HasVal(Keys,x) = -1) {
+			; msgbox, % "pushing " . x
+			Keys.push(x)
+		}
 	}
-	Fn_Export("Other", Options_TVG3PrefixURL)
+	Fn_SortArray(Keys)
+	;;Export Each Track type to HTML
+	Loop, % Keys.MaxIndex() {
+		Fn_Export(Keys[A_Index], Options_TVG3PrefixURL)
+	}
+
+
+	;;Aus, NZ, and Japan must be handled explicitly because they don't follow SimoCentral rules
+	; Fn_Export("Australia", Options_TVG3PrefixURL)
+	; Fn_Export("New_Zealand", Options_TVG3PrefixURL)
+	; Fn_Export("South Korea", Options_TVG3PrefixURL)
+	; Fn_Export("Japan", Options_TVG3PrefixURL)
+	; ;Loop all others
+	; Loop, %inisections%
+	; {
+	; 	Fn_Export(section%A_Index%, Options_TVG3PrefixURL)
+	; }
+	; Fn_Export("Other", Options_TVG3PrefixURL)
 }
 	
 
@@ -291,13 +317,14 @@ Return
 ;/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\
 ; Buttons
 ;\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/
-Click:
+EditDate:
 selected := LV_GetNext(1, Focused)
 if (selected > 0) { ;If a number
-	LV_GetText(RowText, selected, 3) ;Date
+	LV_GetText(INDEX, selected, 1) ;INDEX
+	LV_GetText(RowText, selected, 4) ;date
 	msgtext := "Please enter a new date in YYYYMMDD format"
 	InputBox, UserInput, %msgtext%, %msgtext%, , , , , , , ,%RowText%
-	AllTracks_Array[selected,"Date"] := UserInput
+	AllTracks_Array[INDEX,"Date"] := UserInput
 	Goto, Parse
 }
 Return
@@ -305,10 +332,11 @@ Return
 EditAssoc:
 selected := LV_GetNext(1, Focused)
 if (selected > 0) {
-	LV_GetText(RowText, selected, 2) ;Date
+	LV_GetText(INDEX, selected, 1) ;INDEX
+	LV_GetText(RowText, selected, 3) ;assoc
 	msgtext := "Please enter a new Association (Australia, UK#IRE, etc)"
 	InputBox, UserInput, %msgtext%, %msgtext%, , , , , , , ,%RowText%
-	AllTracks_Array[selected,"Key"] := UserInput
+	AllTracks_Array[INDEX,"Key"] := UserInput
 	Goto, Parse
 }
 Return
@@ -316,10 +344,11 @@ Return
 EditName:
 selected := LV_GetNext(1, Focused)
 if (selected > 0) {
-	LV_GetText(RowText, selected, 1) ;TrackName
+	LV_GetText(INDEX, selected, 1) ;INDEX
+	LV_GetText(RowText, selected, 2) ;TrackName
 	msgtext := "Please enter a new Trackname"
 	InputBox, UserInput, %msgtext%, %msgtext%, , , , , , , ,%RowText%
-	AllTracks_Array[selected,"TrackName"] := UserInput
+	AllTracks_Array[INDEX,"TrackName"] := UserInput
 	Goto, Parse
 }
 Return
@@ -328,8 +357,10 @@ Return
 Delete:
 selected := LV_GetNext(1, Focused)
 if (selected > 0) {
-	AllTracks_Array[selected,"Date"] := 20160101
-	AllTracks_Array.Remove(selected)
+	LV_GetText(INDEX, selected, 1) ;INDEX
+	msgbox, % AllTracks_Array[INDEX,"DateTrack"]
+	AllTracks_Array[INDEX,"Date"] := 20100101 ;Will be automatically purged because of old date
+	AllTracks_Array.Remove(INDEX)
 	Goto, Parse
 }
 Return
@@ -402,7 +433,7 @@ Fn_RemoveDatedKeysInArray(para_Key,para_Array)
 		Loop % para_Array.MaxIndex() {
 		l_DateTrack := para_Array[A_Index,para_Key]
 		If (!Fn_IsValidDate(para_Array[A_Index,"Date"])) {
-			Msgbox, % "Really kick out " . para_Array[A_Index,"FinalFilename"] . "?"
+			Msgbox, % "Really kick out " . para_Array[A_Index,"FinalFilename"] . "? The date ( " . para_Array[A_Index,"Date"] . ") is invalid. Format is ALWAYS YYYYMMDD"
 			para_Array.Remove(A_Index)
 			Break
 		}
@@ -535,23 +566,25 @@ Fn_Export(para_Key, para_URLLead)
 Global
 
 	l_Today = %A_YYYY%%A_MM%%A_DD%
+	outputflag := false
+	
 	;Create HTML Title if any of that kind of track exist
-	AllTracks_ArraX = 0
-	Loop % AllTracks_Array.MaxIndex()
-	{
+	l_count = 0
+	Loop % AllTracks_Array.MaxIndex() {
 		l_FileTimeStamp := AllTracks_Array[A_Index,"Date"]
 		;Only add HTML title if [Key] Tracks are in the array AND are scheduled today or greater
 		If (para_key = AllTracks_Array[A_Index,"Key"] && l_FileTimeStamp >= l_Today) {
-			AllTracks_ArraX += 1
+			l_count += 1
 		}
 	}
-	If ( AllTracks_ArraX >= 1) {
+	If (l_count >= 1) {
 		Fn_InsertBlank(void)
 		Fn_InsertBlank(void)
 		Fn_InsertBlank(void)
 		Fn_HTMLTitle(para_Key)
+	} else {
+		return ;exit the function as there is nothing worth doing here
 	}
-
 
 	;Read each track in the array and write to HTML if it matches the current key (GB/IR, Australia, etc)
 	Loop % AllTracks_Array.MaxIndex()
@@ -564,36 +597,35 @@ Global
 			
 			;Convert data out of l_DateTrack to get the weekdayname and new format of timestamp
 			l_WeekdayName := Fn_GetWeekName(l_DateTrack)
-			;Move file with new name; overwriting if necessary
-			l_NewFileName := AllTracks_Array[A_Index,"FinalFilename"]
 			
 			;See if array item is new enough to be used in HTML
 			If (AllTracks_Array[A_Index,"Date"] < l_Today) {
 				;Skip to next item because this is older than today
 				Continue
 			}
-				
+			
 			l_TrackName := Fn_ReplaceString("_", " ", l_TrackName)
 			l_Key := Fn_ReplaceString("_", " ", l_Key)
 			;If the TrackName matches the Key, only output day in the HTML Name (This is for Australia/New Zealand/Japan)
 			If (l_TrackName = l_Key) {
-				l_CurrentLine = <a href="%para_URLLead%%l_NewFileName%" target="_blank">%l_WeekdayName% PPs</a><br />
+				l_CurrentLine = <a href="%l_NewFileName%" target="_blank">%l_WeekdayName% PPs</a><br />
 			} Else {
-				l_CurrentLine = <a href="%para_URLLead%%l_NewFileName%" target="_blank">%l_TrackName%, %l_WeekdayName% PPs</a><br />
+				l_CurrentLine = <a href="%l_NewFileName%" target="_blank">%l_TrackName%, %l_WeekdayName% PPs</a><br />
 			}
 			
 			;Check for UK/IRE and insert a </ br> if new weekday is detected
-			If (InStr(AllTracks_Array[A_Index,"Key"],"UK")) {
-				If (FirstGBLoop = 1 && AllTracks_Array[A_Index,"Key"] = "UK#IRE") {
+			If (l_count >= 5) {
+				If (FirstGBLoop = 1) {
 					LastDate := l_WeekdayName
 					FirstGBLoop := 0
 				}
-				If (LastDate != l_WeekdayName && AllTracks_Array[A_Index,"Key"] = "UK#IRE") {
+				If (LastDate != l_WeekdayName) {
 					Fn_InsertText("<br />")
 					LastDate := l_WeekdayName
 				}
 			}
 			Fn_InsertText(l_CurrentLine)
+			outputflag := true
 		}
 	}
 	
@@ -654,10 +686,10 @@ Gui,Add,Button,x50 y60 w120 h30 gRename,RENAME FILES ;gMySubroutine
 
 Gui,Add,Button,x200 y60 w143 h30 gEditAssoc,EDIT ASSOC
 Gui,Add,Button,x350 y60 w143 h30 gEditName,EDIT TRACK NAME
-Gui,Add,Button,x500 y60 w143 h30 gClick,EDIT DATE
+Gui,Add,Button,x500 y60 w143 h30 gEditDate,EDIT DATE
 
 Gui,Add,Button,x650 y60 w143 h30 gDelete,DELETE RECORD
-Gui,Add,ListView,x0 y100 w800 h450 Grid NoSort gClick NoSortvGUI_Listview, Track|Assoc|Date|DateTrack
+Gui,Add,ListView,x0 y100 w800 h450 Grid vGUI_Listview, Index|Track|Assoc|Date
 	; Gui, Add, ListView, x2 y70 w490 h536 Grid NoSort +ReDraw gDoubleClick vGUI_Listview, #|Status|RC|Name|Race|
 
 Gui,Show,h600 w800, %The_ProjectName%
