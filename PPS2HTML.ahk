@@ -11,7 +11,7 @@
 SetBatchLines -1 ;Go as fast as CPU will allow
 StartUp()
 The_ProjectName = PPS2HTML
-The_VersionName = 3.1.1
+The_VersionName = 3.1.2
 
 ;Dependencies
 #Include %A_ScriptDir%\Functions
@@ -593,7 +593,7 @@ Global
 			l_Key := AllTracks_Array[A_Index,"Key"]
 			l_TrackName := AllTracks_Array[A_Index,"TrackName"]
 			l_DateTrack := AllTracks_Array[A_Index,"DateTrack"]
-			l_OldFileName := AllTracks_Array[A_Index,"FileName"]
+			l_FinalFilename := AllTracks_Array[A_Index,"FinalFilename"]
 			
 			;Convert data out of l_DateTrack to get the weekdayname and new format of timestamp
 			l_WeekdayName := Fn_GetWeekName(l_DateTrack)
@@ -608,9 +608,9 @@ Global
 			l_Key := Fn_ReplaceString("_", " ", l_Key)
 			;If the TrackName matches the Key, only output day in the HTML Name (This is for Australia/New Zealand/Japan)
 			If (l_TrackName = l_Key) {
-				l_CurrentLine = <a href="%l_NewFileName%" target="_blank">%l_WeekdayName% PPs</a><br />
+				l_CurrentLine = <a href="%Options_TVG3PrefixURL%%l_FinalFilename%" target="_blank">%l_WeekdayName% PPs</a><br />
 			} Else {
-				l_CurrentLine = <a href="%l_NewFileName%" target="_blank">%l_TrackName%, %l_WeekdayName% PPs</a><br />
+				l_CurrentLine = <a href="%Options_TVG3PrefixURL%%l_FinalFilename%" target="_blank">%l_TrackName%, %l_WeekdayName% PPs</a><br />
 			}
 			
 			;Check for UK/IRE and insert a </ br> if new weekday is detected
