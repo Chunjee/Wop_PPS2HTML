@@ -11,7 +11,7 @@
 SetBatchLines -1 ;Go as fast as CPU will allow
 StartUp()
 The_ProjectName = PPS2HTML
-The_VersionName = 3.1.2
+The_VersionName = 3.1.1
 
 ;Dependencies
 #Include %A_ScriptDir%\Functions
@@ -615,11 +615,9 @@ Global
 			
 			;Check for UK/IRE and insert a </ br> if new weekday is detected
 			If (l_count >= 5) {
-				If (FirstGBLoop = 1) {
+				If (outputflag != true) {
 					LastDate := l_WeekdayName
-					FirstGBLoop := 0
-				}
-				If (LastDate != l_WeekdayName) {
+				} else if (LastDate != l_WeekdayName) {
 					Fn_InsertText("<br />")
 					LastDate := l_WeekdayName
 				}
