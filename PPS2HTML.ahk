@@ -11,7 +11,7 @@
 SetBatchLines -1 ;Go as fast as CPU will allow
 StartUp()
 The_ProjectName = PPS2HTML
-The_VersionName = 3.1.1
+The_VersionName = 3.1.3
 
 ;Dependencies
 #Include %A_ScriptDir%\Functions
@@ -35,7 +35,7 @@ Sb_InstallFiles()
 GUI()
 
 ;;Load the config file and check that it loaded completely
-settings = %A_ScriptDir%\Data\config.ini
+settings := A_ScriptDir "\Data\config.ini"
 Fn_InitializeIni(settings)
 Fn_LoadIni(settings)
 If (Ini_Loaded != 1) {
@@ -130,13 +130,26 @@ Loop, %A_ScriptDir%\*.pdf {
 				Msgbox, The trackname found contains ")" which would be a problem. Alert %The_ProjectName% author for improvements required.
 				Continue
 			}
-			If InStr(Country,"Australia") { 
+			If InStr(Country,"Australia") {
 				TrackName := Country
 			}
 			;Country := Fn_ReplaceString(" ", "_", Country) ;;CHECK INTO THIS
 			TrackName := Fn_ReplaceString(" ", "_", TrackName)
 			The_Date = %tomorrowsyear%%RE_match1%%RE_match2%
 			Fn_InsertData(Country, TrackName, The_Date, A_LoopFileName)
+			Continue
+		}
+	}
+
+	;### SWEDEN--------------------------------------------
+	The_TrackCode := Fn_QuickRegEx(A_LoopFileName,"\d+_([\a-Z]+)_Epp") ;This is catching France Tracks
+	The_Date := Fn_DateParser(A_LoopFileName)
+	Ini_Key := Fn_FindTrackIniKey(The_TrackCode)
+	TrackName := %Ini_Key%_%The_TrackCode%
+	TrackName := Fn_ReplaceString(" ", "_", TrackName)
+	if (Ini_Key = "Sweden") {
+		If (TrackName != "" && The_Date != false) { ;If NOT empty for both
+			Fn_InsertData("Sweden", TrackName, The_Date, A_LoopFileName)
 			Continue
 		}
 	}
@@ -159,7 +172,7 @@ Loop, %A_ScriptDir%\*.pdf {
 		RegExMatch(A_LoopFileName, "(\d{2}).*(\d{2}).*(\d{2})", RE_JP)
 		If (RE_JP1 != "") {
 			The_Date = 20%RE_JP3%%RE_JP1%%RE_JP2%
-			The_Date = Fn_DateParser(The_Date)
+			The_Date := Fn_DateParser(The_Date)
 			Fn_InsertData("Japan", "Japan", The_Date, A_LoopFileName)
 			Continue
 		}
@@ -178,14 +191,18 @@ Loop, %A_ScriptDir%\*.pdf {
 		If (The_Date = 0) {
 			InputBox, The_Date, %The_ProjectName%, % "Enter the racedate for " A_LoopFileName ": `nPlease format as YYYYMMDD"
 			The_Date := Fn_DateParser(The_Date)
+			if (The_Date = 0) {
+				msgbox, % "What you entered was not understood. This file will be skipped"
+				Continue
+			}
 		}
+		
 		If (DateDiff(The_Date, A_Now,"days") > 30) {
 			Msgbox, % A_LoopFileName " measured as 30+ days in the future. Check the date and try again.`n`n" A_LoopFileName "was interpreted as " FormatTime(The_Date, "LongDate")
 			Continue
 		}
-		longmessage := DateDiff(The_Date, A_Now,"days") . " days from now."
 		;InputBox, UserInput_Country, %The_ProjectName%, Group/Country: (Examples- Australia, Melbourne Racing Cup, Other)
-		InputBox, UserInput_TrackName, %The_ProjectName%, % "Track Name for the file " A_LoopFileName ": `nPlease make sure the date '" The_Date "' is valid before pressing 'OK'`nYou can also fix the date in the GUI`n" longmessage
+		InputBox, UserInput_TrackName, %The_ProjectName%, % "Enter a track name for the file: " A_LoopFileName "`n`nMake sure the date '" The_Date "' is valid before pressing 'OK'`nYou can also fix the date in the GUI`n" longmessage
 
 		KnownInternationalTracks := "BusanSeoulAustraliaZealand"
 		UserInput_International := 1
@@ -200,10 +217,14 @@ Loop, %A_ScriptDir%\*.pdf {
 			Fn_InsertData("Korea", UserInput_TrackName, The_Date, A_LoopFileName, UserInput_International)
 			Continue
 		}
+
+		InputBox, UserInput_Association, %The_ProjectName%, % "Enter an association for: " A_LoopFileName "`n`n(Australia, GB#IRE, Melbourne Racing Cup, etc)"
 		If (UserInput_TrackName != "") {
-			Fn_InsertData("Other", UserInput_TrackName, The_Date, A_LoopFileName, UserInput_International)
+			Fn_InsertData(UserInput_Association, UserInput_TrackName, The_Date, A_LoopFileName, UserInput_International)
 			Continue
 		}
+
+		
 	}
 }
 
@@ -332,11 +353,11 @@ Return
 EditAssoc:
 selected := LV_GetNext(1, Focused)
 if (selected > 0) {
-	LV_GetText(INDEX, selected, 1) ;INDEX
+	LV_GetText(l_INDEX, selected, 1) ;INDEX
 	LV_GetText(RowText, selected, 3) ;assoc
 	msgtext := "Please enter a new Association (Australia, UK#IRE, etc)"
 	InputBox, UserInput, %msgtext%, %msgtext%, , , , , , , ,%RowText%
-	AllTracks_Array[INDEX,"Key"] := UserInput
+	AllTracks_Array[l_INDEX,"Key"] := UserInput
 	Goto, Parse
 }
 Return
@@ -614,7 +635,7 @@ Global
 			}
 			
 			;Check for UK/IRE and insert a </ br> if new weekday is detected
-			If (l_count >= 5) {
+			If (l_count >= 7) {
 				If (outputflag != true) {
 					LastDate := l_WeekdayName
 				} else if (LastDate != l_WeekdayName) {
