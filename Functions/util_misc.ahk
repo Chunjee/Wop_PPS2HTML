@@ -1,4 +1,4 @@
-; Version 0.6.0 of all around useful functions
+; Version 0.5 of all around useful functions
 
 ;/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\
 ; Functions
@@ -83,6 +83,10 @@ Fn_DateParser(str)
 	date_array := []
 	d_array := []
 
+	;Get the century
+	FormatTime, local_century, A_Now, yyyy
+	local_century := SubStr(local_century, 1, 2)
+
 	;remove all spaces and non-numbers
 	str := regexreplace(regexreplace(regexreplace(str
                   , "[^,\d]+", " ")
@@ -137,16 +141,60 @@ Fn_DateParser(str)
 	try {
 		RegExMatch(str, "(\d{2}).*(\d{2}).*(\d{2})", RE_Match)
 		if (RE_Match3 != "") {
-			;Get the century
-			FormatTime, local_century, A_Now, yyyy
-			local_century := SubStr(local_century, 1, 2)
-			
 			FormatTime, local_date, %local_century%%RE_Match1%%RE_Match2%%RE_Match3%000000, yyyyMMddHHmmss
-			msgbox, % local_date
 			if (Fn_IsValidDate(local_date)) {
 				date_array.push(StringTrimRight(local_date,6))
 			}
-			FormatTime, local_date, %RE_Match1%%RE_Match3%%RE_Match2%000000, yyyyMMddHHmmss
+			FormatTime, local_date, %local_century%%RE_Match1%%RE_Match3%%RE_Match2%000000, yyyyMMddHHmmss
+			if (Fn_IsValidDate(local_date)) {
+				date_array.push(StringTrimRight(local_date,6))
+			}
+			FormatTime, local_date, %local_century%%RE_Match2%%RE_Match1%%RE_Match3%000000, yyyyMMddHHmmss
+			if (Fn_IsValidDate(local_date)) {
+				date_array.push(StringTrimRight(local_date,6))
+			}
+			FormatTime, local_date, %local_century%%RE_Match2%%RE_Match3%%RE_Match1%000000, yyyyMMddHHmmss
+			if (Fn_IsValidDate(local_date)) {
+				date_array.push(StringTrimRight(local_date,6))
+			}
+			FormatTime, local_date, %local_century%%RE_Match3%%RE_Match1%%RE_Match2%000000, yyyyMMddHHmmss
+			if (Fn_IsValidDate(local_date)) {
+				date_array.push(StringTrimRight(local_date,6))
+			}
+			FormatTime, local_date, %local_century%%RE_Match3%%RE_Match2%%RE_Match3%000000, yyyyMMddHHmmss
+			if (Fn_IsValidDate(local_date)) {
+				date_array.push(StringTrimRight(local_date,6))
+			}
+		}
+	}
+	catch {
+	}
+
+	;Try placing the century in the start of the date
+	try {
+		RegExMatch(str, "(\d{2}).?(\d{2}).?(\d{2})", RE_Match)
+		if (RE_Match3 != "") {
+			FormatTime, local_date, %local_century%%RE_Match1%%RE_Match2%%RE_Match3%000000, yyyyMMddHHmmss
+			if (Fn_IsValidDate(local_date)) {
+				date_array.push(StringTrimRight(local_date,6))
+			}
+			FormatTime, local_date, %local_century%%RE_Match1%%RE_Match3%%RE_Match2%000000, yyyyMMddHHmmss
+			if (Fn_IsValidDate(local_date)) {
+				date_array.push(StringTrimRight(local_date,6))
+			}
+			FormatTime, local_date, %local_century%%RE_Match2%%RE_Match1%%RE_Match3%000000, yyyyMMddHHmmss
+			if (Fn_IsValidDate(local_date)) {
+				date_array.push(StringTrimRight(local_date,6))
+			}
+			FormatTime, local_date, %local_century%%RE_Match2%%RE_Match3%%RE_Match1%000000, yyyyMMddHHmmss
+			if (Fn_IsValidDate(local_date)) {
+				date_array.push(StringTrimRight(local_date,6))
+			}
+			FormatTime, local_date, %local_century%%RE_Match3%%RE_Match1%%RE_Match2%000000, yyyyMMddHHmmss
+			if (Fn_IsValidDate(local_date)) {
+				date_array.push(StringTrimRight(local_date,6))
+			}
+			FormatTime, local_date, %local_century%%RE_Match3%%RE_Match2%%RE_Match3%000000, yyyyMMddHHmmss
 			if (Fn_IsValidDate(local_date)) {
 				date_array.push(StringTrimRight(local_date,6))
 			}
@@ -179,6 +227,9 @@ Fn_DateParser(str)
 	}
 
 	Loop, % date_array.MaxIndex() {
+		if (StrLen(date_array[A_Index]) != 8) {
+			continue
+		}
 		d_array[A_Index,"date"] := date_array[A_Index]
 		d_array[A_Index,"distance"] := DateDiff(date_array[A_Index], A_Now,"days")
 	}
