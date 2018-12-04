@@ -1,0 +1,21 @@
+{
+    "name": "wop_pps2html.ahk",
+    "version": "3.4.0",
+    "description": "Renames FreePPs pdf files; then generates html for use with the normal FreePPs process.",
+    "main": "app.ahk",
+    "scripts": {
+        "newinstall": "yarn install --modules-folder ./Lib"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/Chunjee/Wop_PPS2HTML"
+    },
+    "dependencies": {
+        "json.ahk": "chunjee/json.ahk",
+        "sort-array.ahk": "chunjee/sort-array.ahk",
+        "unit-testing.ahk": "github:chunjee/unit-testing.ahk",
+        "util-misc.ahk": "gist:cf6c862be8fa18c546d2fd67d86f84aa"
+    },
+    "author": "Shawn Brooker",
+    "license": "MIT"
+}
