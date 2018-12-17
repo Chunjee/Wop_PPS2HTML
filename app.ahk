@@ -12,7 +12,7 @@ SetBatchLines -1 ;Go as fast as CPU will allow
 #NoTrayIcon
 #SingleInstance force
 The_ProjectName := "PPS2HTML"
-The_VersionNumb := "3.4.2"
+The_VersionNumb := "3.4.4"
 
 ;Dependencies
 #include %A_ScriptDir%\Functions
@@ -107,32 +107,49 @@ if (Settings.parsing) {
 		searchdir := transformStringVars(value.dir "\*.pdf")
 		loop, %searchdir%, R
 		{
+			if (fn_InArray(AllTracks_Array,A_LoopFileName,"FinalFilename")) { ;; Exit out if the filename is found at all in the finalname array
+				continue
+			}
 			The_TrackName := false
 			RegExResult := fn_QuickRegEx(A_LoopFileName,value.filepattern)
 			; msgbox, % fn_QuickRegEx(A_LoopFileName,value.filepattern)
 			if (RegExResult != false) {
-				The_Date := Fn_DateParser(A_LoopFileName)
+				if (value.prependdate != "") {
+					dateSearchText := transformStringVars(value.prependdate) A_LoopFileName
+				} else {
+					dateSearchText := A_LoopFileName
+				}
+				The_Date := Fn_DateParser(dateSearchText)
 				The_Country := value.association
 				;; Pull Trackname from Regex if specified
 				if (value.tracknameinfile) {
 					The_TrackName := RegExResult
 				}
 
+
 				;; Pull trackname from pdf text if specified
-				if (value.parsepdf = true) {
+				if (value.pdftracknamepattern != "") {
 					text := fn_Parsepdf(A_LoopFileFullPath)
 					The_TrackName := fn_QuickRegEx(A_LoopFileName, value.pdftracknamepattern)
+					if (!The_TrackName) {
+						msg("Couldn't find a trackname in '" A_LoopFileName "' with the RegEx '" value.pdftracknamepattern "'")
+					}
 				}
 				;; Pull trackname from ini lookup if specified
 				if (value.configkeylookup != "") {
 					The_TrackName := fn_iniTrackLookup(value.configkeylookup, RegExResult)
+					if (!The_TrackName) {
+						msg("Searched config.ini under '" value.configkeylookup "' key for '" RegExResult "' and found nothing. Update the file")
+					}
 				}
-					
+				
 				;; Insert data if a trackname and date was verified
+				msgbox, % A_LoopFileName " " The_Date
 				if (The_TrackName && The_Date) {
-					; msgbox, % "Inserting " A_LoopFileFullPath " with the following: " The_Date " - " The_TrackName
 					; Array_Gui(value.brands)
 					Fn_InsertData(The_Country, The_TrackName, The_Date, A_LoopFileName, value.brands, value.international)
+				} else {
+					msg(A_LoopFileName " was not handled by any setting in .\Data\settings.json `n Fix this immediately, renaming files by hand is not advised.")
 				}
 			}
 		}
