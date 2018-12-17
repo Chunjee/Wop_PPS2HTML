@@ -130,7 +130,7 @@ if (Settings.parsing) {
 				;; Pull trackname from pdf text if specified
 				if (value.pdftracknamepattern != "") {
 					text := fn_Parsepdf(A_LoopFileFullPath)
-					The_TrackName := fn_QuickRegEx(A_LoopFileName, value.pdftracknamepattern)
+					The_TrackName := fn_QuickRegEx(text, value.pdftracknamepattern)
 					if (!The_TrackName) {
 						msg("Couldn't find a trackname in '" A_LoopFileName "' with the RegEx '" value.pdftracknamepattern "'")
 					}
@@ -144,10 +144,10 @@ if (Settings.parsing) {
 				}
 				
 				;; Insert data if a trackname and date was verified
-				msgbox, % A_LoopFileName " " The_Date
+				msgbox, % The_TrackName " + " The_Date
 				if (The_TrackName && The_Date) {
-					; Array_Gui(value.brands)
-					Fn_InsertData(The_Country, The_TrackName, The_Date, A_LoopFileName, value.brands, value.international)
+					; msg("inserting: " The_TrackName "(" A_LoopFileName ")  with the assosiation: " The_Country)
+					Fn_InsertData(The_Country, The_TrackName, The_Date, A_LoopFileFullPath, value.brands, value.international)
 				} else {
 					msg(A_LoopFileName " was not handled by any setting in .\Data\settings.json `n Fix this immediately, renaming files by hand is not advised.")
 				}
@@ -363,19 +363,24 @@ Global
 		l_OldFileName := AllTracks_Array[A_Index,"FileName"]
 		l_NewFileName := AllTracks_Array[A_Index,"FinalFilename"]
 
-		IfNotExist, %A_ScriptDir%\%l_OldFileName%
+		IfNotExist, %l_OldFileName%
 		{
 			continue
 		}
 		if (!InStr(l_OldFileName,".pdf")) {
 			continue
 		}
-		;Msgbox, moving %l_OldFileName% to %l_NewFileName%
-		FileMove, %A_ScriptDir%\%l_OldFileName%, %A_ScriptDir%\%l_NewFileName%, 1
+		FileCopy, %l_OldFileName%, %A_ScriptDir%\%l_NewFileName%, 1
+		; FileMove, %A_ScriptDir%\%l_OldFileName%, %A_ScriptDir%\%l_NewFileName%, 1
 		;if the filemove was unsuccessful for any reason, tell user
 		if (Errorlevel != 0) {
 			msg("There was a problem renaming the " l_OldFileName " file. Permissions\FileInUse")
+		} else {
+			if (InStr(l_OldFileName, A_ScriptDir)) { ;file is in same dir as exe, delete if move was success
+				FileDelete, %l_OldFileName%
+			}
 		}
+		
 	}
 }
 
@@ -911,6 +916,8 @@ formattime, tomorrow_date, %tomorrow%, yyyyMMdd
 ;\--/--\--/--\--/--\--/--\--/
 
 fn_Parsepdf(para_FilePath) {
+	global
+
 	RunWait, "%exepath%" "%para_FilePath%" "%txtpath%",, Hide
 	Sleep, 200
 
