@@ -23,12 +23,10 @@ The_VersionNumb := "3.4.4"
 #include time.ahk
 #include wrappers.ahk
 
-;For Debug Only
-#include util_arrays.ahk
-
 ;new
 #include %A_ScriptDir%\Lib
 #include transformStringVars.ahk\export.ahk
+#include util-array.ahk\export.ahk
 
 
 
@@ -41,6 +39,8 @@ Sb_GlobalNameSpace()
 Sb_InstallFiles()
 GUI()
 
+#include %A_ScriptDir%\Functions
+msgbox, % #includeagain testscript.ahk
 
 
 ;Check for CommandLineArguments
@@ -76,6 +76,9 @@ if (!AllTracks_Array) {
 FileRead, The_MemoryFile, % A_ScriptDir "\Data\settings.json"
 Settings := JSON.parse(The_MemoryFile)
 The_MemoryFile := ;blank
+if (!IsObject(AllTracks_Array)) {
+	AllTracks_Array := []
+}
 
 ; msgbox, % Settings.downloads[1].site
 ; Goto AutoDownload
@@ -104,8 +107,11 @@ if (Settings.parsing) {
 	for key, value in Settings.parsing
 	{
 		;convert string in settings file to a fully qualifed var + string for searching
-		searchdir := transformStringVars(value.dir "\*.pdf")
-		loop, %searchdir%, R
+		searchdirstring := transformStringVars(value.dir "\*.pdf")
+		if (value.recursive) {
+			value.recursive := " R"
+		}
+		loop, Files, %searchdirstring%, % value.recursive
 		{
 			if (fn_InArray(AllTracks_Array,A_LoopFileName,"FinalFilename")) { ;; Exit out if the filename is found at all in the finalname array
 				continue
@@ -144,16 +150,41 @@ if (Settings.parsing) {
 				}
 				
 				;; Insert data if a trackname and date was verified
-				msgbox, % The_TrackName " + " The_Date
+				; msgbox, % The_TrackName " + " The_Date
 				if (The_TrackName && The_Date) {
 					; msg("inserting: " The_TrackName "(" A_LoopFileName ")  with the assosiation: " The_Country)
-					Fn_InsertData(The_Country, The_TrackName, The_Date, A_LoopFileFullPath, value.brands, value.international)
+					Fn_InsertData(The_Country, The_TrackName, The_Date, A_LoopFileLongPath, value.brands, value.international)
 				} else {
-					msg(A_LoopFileName " was not handled by any setting in .\Data\settings.json `n Fix this immediately, renaming files by hand is not advised.")
+					; else is not handled in a seprate loop checking all files below
+					; msg(A_LoopFileName " was not handled by any setting in .\Data\settings.json `n Fix this immediately, renaming files by hand is not advised.")
 				}
 			}
 		}
 	}
+
+	;; Loop though all files once more and check for any unhandled files
+	unhandledFiles := []
+	for key, value in Settings.parsing
+	{
+		searchdirstring := transformStringVars(value.dir "\*.pdf")
+		if (value.recursive) {
+			value.recursive := " R"
+		}
+		loop, Files, %searchdirstring%, % value.recursive
+		{
+			if !(fn_InArray(AllTracks_Array,A_LoopFileName,"FinalFilename") || fn_InArray(AllTracks_Array,A_LoopFileLongPath,"FileName") || fn_InArray(unhandledFiles,A_LoopFileName)) {
+				unhandledFiles.push(A_LoopFileName)
+			}
+		}
+	}
+	if (unhandledFiles.Length() > 0) {
+		msg("Nothing handling the following files:`n" Array_Print(unhandledFiles) "`n`nUpdate .\Data\settings.json immediately and re-run. Renaming files by hand is NOT advised.")
+	}
+	
+
+} else {
+	msg("No .\Data\settings.json file found`n`nThe application will quit")
+	ExitApp
 }
 
 
@@ -180,7 +211,6 @@ Fn_Sort2DArray(AllTracks_Array,"Key")
 FormatTime, Today, , yyyyMMdd
 LV_Delete()
 ; Array_Gui(AllTracks_Array)
-LV_Add("","","","","")
 loop, % AllTracks_Array.MaxIndex() {
 	if (Today <= AllTracks_Array[A_Index,"Date"]) {
 		LV_Add("",A_Index,AllTracks_Array[A_Index,"TrackName"],AllTracks_Array[A_Index,"Key"],AllTracks_Array[A_Index,"Date"])
@@ -263,7 +293,7 @@ Fn_RemoveDatedKeysInArray("DateTrack", AllTracks_Array)
 ;For Debugging. Show contents of the Array 
 ;Array_Gui(AllTracks_Array)
 
-;Export Array as a JSON file
+;;Export Array as a JSON file
 The_MemoryFile := JSON.stringify(AllTracks_Array)
 FileDelete, %Options_DBLocation%\DB.json
 FileAppend, %The_MemoryFile%, %Options_DBLocation%\DB.json
@@ -363,13 +393,15 @@ Global
 		l_OldFileName := AllTracks_Array[A_Index,"FileName"]
 		l_NewFileName := AllTracks_Array[A_Index,"FinalFilename"]
 
-		IfNotExist, %l_OldFileName%
-		{
+		if !FileExist(l_OldFileName) {
 			continue
+		} else {
+			; msgbox, % l_OldFileName " exists atm"
 		}
 		if (!InStr(l_OldFileName,".pdf")) {
 			continue
 		}
+		; msgbox, %l_OldFileName% %A_ScriptDir%\%l_NewFileName%
 		FileCopy, %l_OldFileName%, %A_ScriptDir%\%l_NewFileName%, 1
 		; FileMove, %A_ScriptDir%\%l_OldFileName%, %A_ScriptDir%\%l_NewFileName%, 1
 		;if the filemove was unsuccessful for any reason, tell user
@@ -380,170 +412,19 @@ Global
 				FileDelete, %l_OldFileName%
 			}
 		}
-		
 	}
 }
 
 
 
 ;/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\
-; Large Functions
-;\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/
-
-; fn_ProcessFile(para_FilePath) {
-; global
-
-; 	if (Fn_QuickRegEx(para_FilePath,"(_INTER)") != "null") {
-; 		RegExMatch(para_FilePath, "(\d{4})(\d{2})(\d{2})(\D{2,})\(D\)_INTER", RE_SimoCentralFile)
-; 		;RE_1 is 2014; RE_2 is month; RE_3 is day; RE_4 is track code, usually 2 or 3 letters.
-		
-; 		if (RE_SimoCentralFile1 != "") {
-; 		;if RegEx was a successful match, Find the Ini_[Key] in config.ini
-; 		TrackTLA := RE_SimoCentralFile4
-; 		Ini_Key := Fn_FindTrackIniKey(TrackTLA)
-		
-; 		;Now Trackname will be 'Warwick' in the case of [GB]_WAR. Convert Spaces to Underscores
-; 		TrackName := %Ini_Key%_%TrackTLA%
-; 		The_Date := Fn_DateParser(para_FilePath)
-; 			;;if [Key]_TLA has no associated track; tell user and exit
-; 			if (TrackName = "") {
-; 				msg("There was no corresponding track found for " TrackTLA ", please update the config.ini file and run again. `n `n You should have something like this: `n[Key]`n TrackTLA%=Track Name")
-; 				return false
-; 			} else {
-; 				Fn_InsertData(Ini_Key, TrackName, The_Date, para_FilePath)		
-; 				return false
-; 			}
-; 		}
-; 	}
-
-; 	;### Attempt All Sky Racing--------------------------------------------
-; 	;;Is this track from sky racing? They all have "pp" in the filename
-; 	trackdate := Fn_QuickRegEx(para_FilePath,"(\w{2,4})ppAB(\d{4})",2)
-; 	if (trackdate != "null") {
-; 		RegExMatch(para_FilePath, "(\d{2})(\d{2})\.", RE_match)
-; 		if (RE_match1 != "") {
-; 			; command = "%exepath%" "%para_FilePath%" "%txtpath%"
-; 			RunWait, "%exepath%" "%para_FilePath%" "%txtpath%",, Hide
-; 			Sleep, 200
-
-; 			;;Read the Trackname out of the converted text
-; 			FileRead, File_PDFTEXT, %txtpath%
-; 			FileDelete, %txtpath%
-; 			Country := Fn_QuickRegEx(File_PDFTEXT,"([A-Za-z ]{6,})\s+\(([A-Z][\w- ]+)\)")
-; 			TrackName := Fn_QuickRegEx(File_PDFTEXT,"([A-Za-z ]{6,})\s+\(([A-Z][\w- ]+)\)",2)
-; 			if (Country = "null") {
-; 				clipboard := File_PDFTEXT
-; 				msg("Couldn't extract Region from the file: " para_FilePath ". Troubleshoot or process manually.")
-; 				return false
-; 			}
-; 			if (TrackName = "null") {
-; 				clipboard := File_PDFTEXT
-; 				msg("Couldn't extract trackname from the file: " para_FilePath ". Troubleshoot or process manually.")
-; 				return false
-; 			}
-; 			if ( InStr(TrackName,")") || InStr(TrackName,"(") ) {
-; 				clipboard := File_PDFTEXT
-; 				msg("The trackname found contains ')' which would be a problem. Alert " The_ProjectName " author for improvements required.")
-; 				return false
-; 			}
-; 			if InStr(Country,"Australia") {
-; 				TrackName := Country
-; 			}
-; 			The_Date = %tomorrowsyear%%RE_match1%%RE_match2%
-; 			Fn_InsertData(Country, TrackName, The_Date, para_FilePath)
-; 			return true
-; 		}
-; 	}
-
-; 	;### SWEDEN--------------------------------------------
-; 	The_TrackCode := Fn_QuickRegEx(para_FilePath,"\d+_([a-zA-Z\d]+)_+Epp") ;This is catching Sweden Tracks
-; 	The_Date := Fn_DateParser(para_FilePath)
-; 	Ini_Key := Fn_FindTrackIniKey(The_TrackCode)
-; 	TrackName := %Ini_Key%_%The_TrackCode%
-; 	if (Ini_Key = "Sweden") {
-; 		if (TrackName != "" && The_Date != false) { ;if NOT empty for both
-; 			Fn_InsertData("Sweden", TrackName, The_Date, para_FilePath)
-; 			return true
-; 		}
-; 	}
-
-; 	;### FRANCE--------------------------------------------
-; 	The_TrackCode := Fn_QuickRegEx(para_FilePath,"([a-zA-Z]{3,4}).*(\d{8})\D*-\${4}-RF11") ;This is catching France Tracks
-; 	The_Date := Fn_DateParser(para_FilePath)
-; 	Ini_Key := Fn_FindTrackIniKey(The_TrackCode)
-; 	TrackName := %Ini_Key%_%The_TrackCode%
-; 	if (TrackName != "" && The_Date != false && Ini_Key = "France") { ;if NOT empty for both
-; 		Fn_InsertData("France", TrackName, The_Date, para_FilePath)
-; 		return true
-; 	}
-
-; 	;### JAPAN--------------------------------------------
-; 	;;Is this track Japan? They all have "Japan" in the filename
-; 	if (InStr(para_FilePath, "Japan"))	{
-; 		;Grab the date
-; 		The_Date := Fn_DateParser(para_FilePath)
-; 		if (RE_JP1 && The_Date != false) {
-; 			Fn_InsertData("Japan", "Japan", The_Date, para_FilePath)
-; 			return true
-; 		}
-; 	}
-
-; 	;### Other PDFs ###--------------------------------------------
-; 	;;Only handle when specified in config settings
-; 	if (Options_HandleExtraFiles = 1) {
-; 		;Skip any file already handled
-; 		loop, % AllTracks_Array.MaxIndex() {
-; 			if (AllTracks_Array[A_Index,"FinalFilename"] = para_FilePath || AllTracks_Array[A_Index,"FileName"] = para_FilePath) { ;new and old file names
-; 				return false
-; 			}
-; 		}
-; 		The_Date := Fn_DateParser(para_FilePath)
-; 		if (The_Date = false) {
-; 			InputBox, The_Date, %The_ProjectName%, % "Enter the racedate for " para_FilePath ": `nPlease format as YYYYMMDD",,,,,,,, % tomorrow_date
-; 			The_Date := Fn_DateParser(The_Date)
-; 			if (The_Date = false) {
-; 				msg("What you entered was not understood. This file will be skipped")
-; 				return false
-; 			}
-; 		}
-		
-; 		if (fn_DateDifference(The_Date, A_Now,"days") > 30) {
-; 			msg(para_FilePath " measured as 30+ days in the future. Check the date and try again.`n`n" para_FilePath "was interpreted as " FormatTime(The_Date, "LongDate"))
-; 			return false
-; 		}
-; 		;InputBox, UserInput_Country, %The_ProjectName%, Group/Country: (Examples- Australia, Melbourne Racing Cup, Other)
-; 		InputBox, UserInput_TrackName, %The_ProjectName%, % "Enter a track name for the file: " para_FilePath
-
-; 		KnownInternationalTracks := "BusanSeoulAustraliaZealand"
-; 		UserInput_International := 1
-; 		if (!InStr(KnownInternationalTracks, UserInput_TrackName)) {
-; 			InputBox, UserInput_International, %The_ProjectName%, % "Is this track international?`n`nYes/No"
-; 			if (InStr(UserInput_International, "n") || InStr(UserInput_International, "N")) {
-; 				UserInput_International := 0
-; 			} ;else handled above
-; 		}
-; 		; Insert data if acceptable input
-; 		if (InStr("BusanSeoul", UserInput_TrackName) && UserInput_TrackName != "") {
-; 			Fn_InsertData("Korea", UserInput_TrackName, The_Date, para_FilePath, UserInput_International)
-; 			return true
-; 		}
-
-; 		InputBox, UserInput_Association, %The_ProjectName%, % "Enter an association for: " para_FilePath "`n`n(Australia, GB_IRE, Melbourne Racing Cup, etc)"
-; 		if (UserInput_TrackName != "") {
-; 			Fn_InsertData(UserInput_Association, UserInput_TrackName, The_Date, para_FilePath, UserInput_International)
-; 			return true
-; 		}
-; 	}
-; }
-
-;/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\
 ; Functions
 ;\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/
 
-;Gets the timestamp out of a filename and converts it into a full day of the week name
+;Gets the timestamp out of a filename and converts it into a day of the week name
 Fn_GetWeekName(para_String) ;Example Input: "20140730Scottsville"
 {
-RegExMatch(para_String, "(\d{4})(\d{2})(\d{2})", RE_TimeStamp)
+	RegExMatch(para_String, "(\d{4})(\d{2})(\d{2})", RE_TimeStamp)
 	if (RE_TimeStamp1 != "") {
 		;dddd corresponds to Monday for example
 		FormatTime, l_WeekdayName , %RE_TimeStamp1%%RE_TimeStamp2%%RE_TimeStamp3%, dddd
@@ -551,9 +432,9 @@ RegExMatch(para_String, "(\d{4})(\d{2})(\d{2})", RE_TimeStamp)
 	if (l_WeekdayName != "") {
 		return l_WeekdayName
 	} else {
-		;return a fat error is nothing is found
-		;Msgbox, ERROR - %RE_TimeStamp1%%RE_TimeStamp2%%RE_TimeStamp3% - %para_String%
-		return "ERROR"
+		;throw error and return false if unsuccessful
+		throw error
+		return false
 	}
 }
 
@@ -686,14 +567,11 @@ Global
 	;See if the Track/Date is already present in the array. if yes, do not insert again
 	loop, % AllTracks_Array.MaxIndex()
 	{
-		if (para_Date . para_TrackName = AllTracks_Array[A_Index,"Date"] . AllTracks_Array[A_Index,"TrackName"]) {
-			;Msgbox, %para_TrackName% for %para_Date% already exists in this array
-			return
+		if (para_Date . para_TrackName = AllTracks_Array[A_Index,"Date"] . AllTracks_Array[A_Index,"TrackName"] ) {
+			;Msgbox, %para_TrackName%%para_Date% already exists in this array
+			return false
 		}
 	}
-
-	;;International Track declaration
-	;Just trusts para_International to be accurate
 
 	AllTracks_ArraX += 1
 	if (!para_Date || !para_TrackName) {
@@ -742,8 +620,7 @@ Global
 	}
 
 	;Read each track in the array and write to HTML if it matches the current key (GB/IR, Australia, etc)
-	loop % AllTracks_Array.MaxIndex()
-	{
+	loop % AllTracks_Array.MaxIndex() {
 		if (para_key = AllTracks_Array[A_Index,"Key"])	{
 			l_Key := AllTracks_Array[A_Index,"Key"]
 			l_TrackName := AllTracks_Array[A_Index,"TrackName"]
