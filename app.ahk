@@ -27,6 +27,7 @@ The_VersionNumb := "3.4.4"
 #include %A_ScriptDir%\Lib
 #include transformStringVars.ahk\export.ahk
 #include util-array.ahk\export.ahk
+#include biga.ahk\export.ahk
 
 
 
@@ -38,9 +39,14 @@ The_VersionNumb := "3.4.4"
 Sb_GlobalNameSpace()
 Sb_InstallFiles()
 GUI()
-
-#include %A_ScriptDir%\Functions
-msgbox, % #includeagain testscript.ahk
+;; Make some special vars for config file date prediction
+Tomorrow := %A_Now%
+Tomorrow += 1, d
+FormatTime, TOM_DD, %Tomorrow%, dd
+FormatTime, TOM_MM, %Tomorrow%, MM
+FormatTime, TOM_YYYY, %Tomorrow%, yyyy
+FormatTime, TOM_YY, %Tomorrow%, yyyy
+TOM_YY := SubStr(TOM_YY, 3, 2)
 
 
 ;Check for CommandLineArguments
@@ -567,7 +573,7 @@ Global
 	;See if the Track/Date is already present in the array. if yes, do not insert again
 	loop, % AllTracks_Array.MaxIndex()
 	{
-		if (para_Date . para_TrackName = AllTracks_Array[A_Index,"Date"] . AllTracks_Array[A_Index,"TrackName"] ) {
+		if (para_Date . para_TrackName = AllTracks_Array[A_Index,"Date"] . AllTracks_Array[A_Index,"TrackName"]) {
 			;Msgbox, %para_TrackName%%para_Date% already exists in this array
 			return false
 		}
@@ -579,7 +585,7 @@ Global
 	}
 
 	AllTracks_Array[AllTracks_ArraX,"Key"] := para_Key
-	AllTracks_Array[AllTracks_ArraX,"TrackName"] := fn_ReplaceStrings(" ", "_", para_TrackName)
+	AllTracks_Array[AllTracks_ArraX,"TrackName"] := para_TrackName
 	AllTracks_Array[AllTracks_ArraX,"Date"] := para_Date
 	AllTracks_Array[AllTracks_ArraX,"DateTrack"] := para_Date . para_TrackName
 	AllTracks_Array[AllTracks_ArraX,"FileName"] := para_OldFileName
