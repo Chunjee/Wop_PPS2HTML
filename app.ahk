@@ -12,7 +12,7 @@ SetBatchLines -1 ;Go as fast as CPU will allow
 #NoTrayIcon
 #SingleInstance force
 The_ProjectName := "PPS2HTML"
-The_VersionNumb := "3.4.4"
+The_VersionNumb := "3.4.6"
 
 ;Dependencies
 #include %A_ScriptDir%\Functions
@@ -41,13 +41,7 @@ Sb_InstallFiles()
 GUI()
 ;; Make some special vars for config file date prediction
 Tomorrow := %A_Now%
-Tomorrow += 1, d
-FormatTime, TOM_DD, %Tomorrow%, dd
-FormatTime, TOM_MM, %Tomorrow%, MM
-FormatTime, TOM_YYYY, %Tomorrow%, yyyy
-FormatTime, TOM_YY, %Tomorrow%, yyyy
-TOM_YY := SubStr(TOM_YY, 3, 2)
-
+sb_IncrementDate()
 
 ;Check for CommandLineArguments
 CL_Args = StrSplit(1 , "|")
@@ -122,14 +116,27 @@ if (Settings.parsing) {
 			if (fn_InArray(AllTracks_Array,A_LoopFileName,"FinalFilename")) { ;; Exit out if the filename is found at all in the finalname array
 				continue
 			}
+			
 			The_TrackName := false
-			RegExResult := fn_QuickRegEx(A_LoopFileName,value.filepattern)
+			RegExResult := fn_QuickRegEx(A_LoopFileName,transformStringVars(value.filepattern))
+			if (value.datestring != "" && RegExResult = false) { ;loop 7 days ahead if user is trying to use a specific date and the file wasn't already found
+				sb_IncrementDate(A_Now)
+				loop, 7 {
+					sb_IncrementDate()
+					RegExResult := fn_QuickRegEx(A_LoopFileName,transformStringVars(value.filepattern))
+					if (RegExResult != false) {
+						break
+					}
+				}
+			}
 			; msgbox, % fn_QuickRegEx(A_LoopFileName,value.filepattern)
 			if (RegExResult != false) {
-				if (value.prependdate != "") {
+				dateSearchText := A_LoopFileName
+				if (value.prependdate != "") { ;append the date
 					dateSearchText := transformStringVars(value.prependdate) A_LoopFileName
-				} else {
-					dateSearchText := A_LoopFileName
+				}
+				if (value.datestring != "") { ;parse using config specified datestring
+					dateSearchText := transformStringVars(value.datestring)
 				}
 				The_Date := Fn_DateParser(dateSearchText)
 				The_Country := value.association
@@ -426,6 +433,28 @@ Global
 ;/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\
 ; Functions
 ;\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/
+
+;Increment the date used for 
+sb_IncrementDate(para_StartDate = "")
+{
+	global
+
+	Tomorrow += 1, d
+	if (para_StartDate != "") { ;set date with argument if supplied
+		Tomorrow := para_StartDate
+		if (para_StartDate.length <= 8) { ;append HHMMSS if missing
+			Tomorrow := para_StartDate . "000000"
+		}
+	}
+	FormatTime, TOM_DD, %Tomorrow%, dd
+	FormatTime, TOM_MM, %Tomorrow%, MM
+	FormatTime, TOM_YYYY, %Tomorrow%, yyyy
+	FormatTime, TOM_YY, %Tomorrow%, yyyy
+	TOM_YY := SubStr(TOM_YY, 3, 2)
+	;some other more obscure stuff
+	FormatTime, TOM_D, %Tomorrow%, d
+	FormatTime, TOM_M, %Tomorrow%, M
+}
 
 ;Gets the timestamp out of a filename and converts it into a day of the week name
 Fn_GetWeekName(para_String) ;Example Input: "20140730Scottsville"
