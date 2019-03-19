@@ -12,7 +12,7 @@ SetBatchLines -1 ;Go as fast as CPU will allow
 #NoTrayIcon
 #SingleInstance force
 The_ProjectName := "PPS2HTML"
-The_VersionNumb := "3.4.6"
+The_VersionNumb := "3.4.8"
 
 ;Dependencies
 #include %A_ScriptDir%\Functions
@@ -80,7 +80,6 @@ if (!IsObject(AllTracks_Array)) {
 	AllTracks_Array := []
 }
 
-; msgbox, % Settings.downloads[1].site
 ; Goto AutoDownload
 
 ;/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\
@@ -117,10 +116,10 @@ if (Settings.parsing) {
 				continue
 			}
 			
+			sb_IncrementDate(A_Now)
 			The_TrackName := false
 			RegExResult := fn_QuickRegEx(A_LoopFileName,transformStringVars(value.filepattern))
-			if (value.datestring != "" && RegExResult = false) { ;loop 7 days ahead if user is trying to use a specific date and the file wasn't already found
-				sb_IncrementDate(A_Now)
+			if (value.weeksearch true && RegExResult = false) { ;loop 7 days ahead if user is trying to use a specific date and the file wasn't already found
 				loop, 7 {
 					sb_IncrementDate()
 					RegExResult := fn_QuickRegEx(A_LoopFileName,transformStringVars(value.filepattern))
@@ -135,8 +134,8 @@ if (Settings.parsing) {
 				if (value.prependdate != "") { ;append the date
 					dateSearchText := transformStringVars(value.prependdate) A_LoopFileName
 				}
-				if (value.datestring != "") { ;parse using config specified datestring
-					dateSearchText := transformStringVars(value.datestring)
+				if (value.weeksearch = true) { ;parse using config specified datestring
+					dateSearchText := TOM_YYYY TOM_MM TOM_DD
 				}
 				The_Date := Fn_DateParser(dateSearchText)
 				The_Country := value.association
@@ -166,7 +165,7 @@ if (Settings.parsing) {
 				; msgbox, % The_TrackName " + " The_Date
 				if (The_TrackName && The_Date) {
 					; msg("inserting: " The_TrackName "(" A_LoopFileName ")  with the assosiation: " The_Country)
-					Fn_InsertData(The_Country, The_TrackName, The_Date, A_LoopFileLongPath, value.brands, value.international)
+					Fn_InsertData(The_Country, The_TrackName, The_Date, A_LoopFileLongPath, value.brand, value.international)
 				} else {
 					; else is not handled in a seprate loop checking all files below
 					; msg(A_LoopFileName " was not handled by any setting in .\Data\settings.json `n Fix this immediately, renaming files by hand is not advised.")
@@ -200,6 +199,16 @@ if (Settings.parsing) {
 	ExitApp
 }
 
+
+;/--\--/--\--/--\
+; Remove blacklisted tracks
+;\--/--\--/--\--/
+if (Settings.blacklist) {
+	for key, value in Settings.blacklist
+	{
+
+	}
+}
 
 ; Old folder processing
 ; loop, % The_ListofDirs.MaxIndex()
@@ -241,11 +250,15 @@ loop, % AllTracks_Array.MaxIndex() {
 	;msgbox, % AllTracks_Array[A_Index,"Date"] " vs " Today
 	if (AllTracks_Array[A_Index,"Date"] >= Today && !InStr(AllTracks_Array[A_Index,"DateTrack"],"null")) {
 		thistrack := {}
-		thistrack.name := AllTracks_Array[A_Index,"TrackName"]
+		;Apply the track name as innerHTML unless the trackname matches it's own key (IE Australia)
+		thistrack.name := AllTracks_Array[A_Index,"TrackName"] ", " Fn_GetWeekName(AllTracks_Array[A_Index,"Date"])
+		if (AllTracks_Array[A_Index,"TrackName"] == AllTracks_Array[A_Index,"Key"]) {
+			thistrack.name := Fn_GetWeekName(AllTracks_Array[A_Index,"Date"])
+		}
 		thistrack.filename := AllTracks_Array[A_Index,"FinalFilename"]
 		thistrack.date := AllTracks_Array[A_Index,"Date"]
 		thistrack.group := AllTracks_Array[A_Index,"Key"]
-		thistrack.brands := AllTracks_Array[A_Index,"brands"]
+		thistrack.brand := AllTracks_Array[A_Index,"brand"]
 		if (AllTracks_Array[A_Index,"International"] = true) {
 			thistrack.international := true
 		} else {
@@ -283,19 +296,6 @@ if (Options_ExportDrupalHTML = 1) {
 	loop, % Keys.MaxIndex() {
 		Fn_Export(Keys[A_Index], Options_TVG3PrefixURL)
 	}
-
-
-	;;Aus, NZ, and Japan must be handled explicitly because they don't follow SimoCentral rules
-	; Fn_Export("Australia", Options_TVG3PrefixURL)
-	; Fn_Export("New_Zealand", Options_TVG3PrefixURL)
-	; Fn_Export("South Korea", Options_TVG3PrefixURL)
-	; Fn_Export("Japan", Options_TVG3PrefixURL)
-	; ;Loop all others
-	; loop, %inisections%
-	; {
-	; 	Fn_Export(section%A_Index%, Options_TVG3PrefixURL)
-	; }
-	; Fn_Export("Other", Options_TVG3PrefixURL)
 }
 	
 
@@ -419,10 +419,13 @@ Global
 		; FileMove, %A_ScriptDir%\%l_OldFileName%, %A_ScriptDir%\%l_NewFileName%, 1
 		;if the filemove was unsuccessful for any reason, tell user
 		if (Errorlevel != 0) {
-			msg("There was a problem renaming the " l_OldFileName " file. Permissions\FileInUse")
+			msg("There was a problem renaming the following: " l_OldFileName " (Permissions\FileInUse)")
 		} else {
 			if (InStr(l_OldFileName, A_ScriptDir)) { ;file is in same dir as exe, delete if move was success
 				FileDelete, %l_OldFileName%
+				if (Errorlevel != 0) {
+					msg("There was a problem deleting the old file: " l_OldFileName " (Permissions\FileInUse)")
+				}
 			}
 		}
 	}
@@ -485,7 +488,7 @@ Fn_RemoveDatedKeysInArray(para_Key,para_Array)
 		if (!fn_DateValidate(para_Array[A_Index,"Date"])) {
 			; Msgbox, % "Really kick out " . para_Array[A_Index,"FinalFilename"] . "? The date ( " . para_Array[A_Index,"Date"] . ") is invalid. Format is ALWAYS YYYYMMDD"
 			para_Array.Remove(A_Index)
-			Break
+			break
 		}
 		;Convert data out of l_DateTrack to get the weekdayname and new format of timestamp
 		l_WeekdayName := Fn_GetWeekName(l_DateTrack)
@@ -494,7 +497,7 @@ Fn_RemoveDatedKeysInArray(para_Key,para_Array)
 		FileDate := Fn_JustGetDate(l_DateTrack)
 			if (FileDate < LastMonth) {
 				para_Array.Remove(A_Index)
-				Break
+				break
 				;Must break out because A_Index will no longer corrilate to correct array index
 			}
 		}
@@ -588,7 +591,7 @@ Global settings_fileloc
 
 
 ;This function inserts each track to an array that later gets sorted and exported to HTML
-Fn_InsertData(para_Key, para_TrackName, para_Date, para_OldFileName, para_brands, para_International := 1) 
+Fn_InsertData(para_Key, para_TrackName, para_Date, para_OldFileName, para_brand, para_International := 1) 
 {
 Global
 
@@ -620,7 +623,7 @@ Global
 	AllTracks_Array[AllTracks_ArraX,"FileName"] := para_OldFileName
 	AllTracks_Array[AllTracks_ArraX,"FinalFilename"] := Fn_Filename(AllTracks_Array[AllTracks_ArraX,"TrackName"], para_Date)
 	AllTracks_Array[AllTracks_ArraX,"International"] := para_International
-	AllTracks_Array[AllTracks_ArraX,"brands"] := para_brands
+	AllTracks_Array[AllTracks_ArraX,"brand"] := para_brand
 	if (AllTracks_Array[AllTracks_ArraX,"Date"] = "null") {
 		msg("FATAL ERROR WITH " AllTracks_Array[AllTracks_ArraX,"FinalFilename"] " - " para_DateTrack)
 		exitapp
