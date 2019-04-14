@@ -12,7 +12,7 @@ SetBatchLines -1 ;Go as fast as CPU will allow
 #NoTrayIcon
 #SingleInstance force
 The_ProjectName := "PPS2HTML"
-The_VersionNumb := "3.4.8"
+The_VersionNumb := "3.4.9"
 
 ;Dependencies
 #include %A_ScriptDir%\Functions
@@ -128,8 +128,17 @@ if (Settings.parsing) {
 					}
 				}
 			}
-			; msgbox, % fn_QuickRegEx(A_LoopFileName,value.filepattern)
+			
+			; do for any regex pattern matches in settings file
 			if (RegExResult != false) {
+
+				; delete any duplicate downloads
+				if (value.do = "delete") {
+					FileDelete, % A_LoopFileFullPath
+					continue
+				}
+				
+				; parse the filename for a date
 				dateSearchText := A_LoopFileName
 				if (value.prependdate != "") { ;append the date
 					dateSearchText := transformStringVars(value.prependdate) A_LoopFileName
@@ -268,8 +277,10 @@ loop, % AllTracks_Array.MaxIndex() {
 		;replace some yesteryear placeholder characters
 		thistrack.group := StrReplace(thistrack.group, "#" , "/")
 		thistrack.group := StrReplace(thistrack.group, "_" , " ")
-		;AllTracks_Array[AllTracks_ArraX,"Key"]
+		;;Append the track to JSON output sorted as it was parsed
 		Data_json.push(thistrack)
+		;if backwards is needed:
+		; Data_json.InsertAt(1,thistrack)
 	}
 }
 
