@@ -13,7 +13,9 @@
     "dependencies": {
         "json.ahk": "chunjee/json.ahk",
         "sort-array.ahk": "chunjee/sort-array.ahk",
-        "util-misc.ahk": "gist:cf6c862be8fa18c546d2fd67d86f84aa"
+        "util-misc.ahk": "gist:cf6c862be8fa18c546d2fd67d86f84aa",
+        "transformStringVars.ahk": "chunjee/transformStringVars.ahk",
+        "wrappers.ahk": "chunjee/wrappers.ahk"
     },
     "devdependencies": {
         "unit-testing.ahk": "github:chunjee/unit-testing.ahk"
