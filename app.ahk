@@ -12,7 +12,7 @@ SetBatchLines -1 ;Go as fast as CPU will allow
 #NoTrayIcon
 #SingleInstance force
 The_ProjectName := "PPS2HTML"
-The_VersionNumb := "3.4.9"
+The_VersionNumb := "3.5.0"
 
 ;Dependencies
 #include %A_ScriptDir%\Functions
@@ -128,7 +128,7 @@ if (Settings.parsing) {
 					}
 				}
 			}
-			
+
 			; do for any regex pattern matches in settings file
 			if (RegExResult != false) {
 
@@ -153,6 +153,19 @@ if (Settings.parsing) {
 					The_TrackName := RegExResult
 				}
 
+				; change the date if specified
+				if (value.do = "incrementday") {
+					FormatTime, local_date, %The_Date%000000, yyyyMMddHHmmss
+					local_date += 1, Days
+					FormatTime, The_Date, %local_date%, yyyyMMdd
+				}
+				if (value.do = "decrementday") {
+					FormatTime, local_date, %The_Date%000000, yyyyMMddHHmmss
+					local_date += -1, Days
+					FormatTime, The_Date, %local_date%, yyyyMMdd
+					; msgbox, % "parsed date is " local_date "| decrementday is " The_Date
+				}
+
 
 				;; Pull trackname from pdf text if specified
 				if (value.pdftracknamepattern != "") {
@@ -171,13 +184,11 @@ if (Settings.parsing) {
 				}
 				
 				;; Insert data if a trackname and date was verified
-				; msgbox, % The_TrackName " + " The_Date
 				if (The_TrackName && The_Date) {
 					; msg("inserting: " The_TrackName "(" A_LoopFileName ")  with the assosiation: " The_Country)
-					Fn_InsertData(The_Country, The_TrackName, The_Date, A_LoopFileLongPath, value.brand, value.international)
+					Fn_InsertData(The_Country, Trim(The_TrackName), The_Date, A_LoopFileLongPath, value.brand, value.international)
 				} else {
 					; else is not handled in a seprate loop checking all files below
-					; msg(A_LoopFileName " was not handled by any setting in .\Data\settings.json `n Fix this immediately, renaming files by hand is not advised.")
 				}
 			}
 		}
@@ -232,7 +243,6 @@ if (Settings.blacklist) {
 
 
 
-
 ;Sort all Array Content by DateTrack ; No not do in descending order as this will flip the output. Sat,Fri,Thur
 ;Fn_Sort2DArrayFast(AllTracks_Array, "DateTrack")
 Fn_Sort2DArray(AllTracks_Array,"DateTrack")
@@ -259,8 +269,13 @@ loop, % AllTracks_Array.MaxIndex() {
 	;msgbox, % AllTracks_Array[A_Index,"Date"] " vs " Today
 	if (AllTracks_Array[A_Index,"Date"] >= Today && !InStr(AllTracks_Array[A_Index,"DateTrack"],"null")) {
 		thistrack := {}
-		;Apply the track name as innerHTML unless the trackname matches it's own key (IE Australia)
-		thistrack.name := AllTracks_Array[A_Index,"TrackName"] ", " Fn_GetWeekName(AllTracks_Array[A_Index,"Date"])
+		; build the string to display on the site, defaulting to "[trackname], [weekday]" unless a user defined string exists
+		if (!AllTracks_Array[A_Index,"String"]) {
+			thistrack.name := AllTracks_Array[A_Index,"TrackName"] ", " Fn_GetWeekName(AllTracks_Array[A_Index,"Date"])
+		} else {
+			thistrack.name := AllTracks_Array[A_Index,"String"]
+		}
+		; Do not use the trackname if the track matches it's own key (IE Australia), only use the Weekday name
 		if (AllTracks_Array[A_Index,"TrackName"] == AllTracks_Array[A_Index,"Key"]) {
 			thistrack.name := Fn_GetWeekName(AllTracks_Array[A_Index,"Date"])
 		}
@@ -308,7 +323,7 @@ if (Options_ExportDrupalHTML = 1) {
 		Fn_Export(Keys[A_Index], Options_TVG3PrefixURL)
 	}
 }
-	
+
 
 ;Kick Array items over 30 days old out
 Fn_RemoveDatedKeysInArray("DateTrack", AllTracks_Array)
@@ -386,14 +401,24 @@ if (selected > 0) {
 }
 return
 
-
 Delete:
 selected := LV_GetNext(1, Focused)
 if (selected > 0) {
 	LV_GetText(INDEX, selected, 1) ;INDEX
 	msg("Deleting: " AllTracks_Array[INDEX,"DateTrack"])
 	AllTracks_Array[INDEX,"Date"] := 20100101 ;Will be automatically purged because of old date
-	; AllTracks_Array.Remove(INDEX)
+	Goto, Parse
+}
+return
+
+EditString:
+selected := LV_GetNext(1, Focused)
+if (selected > 0) {
+	LV_GetText(INDEX, selected, 1) ;INDEX
+	LV_GetText(RowText, selected, 2) ;TrackName
+	msgtext := "Please enter a new STRING"
+	InputBox, UserInput, %msgtext%, %msgtext%, , , , , , , ,%RowText%
+	AllTracks_Array[INDEX,"String"] := UserInput
 	Goto, Parse
 }
 return
@@ -402,6 +427,42 @@ return
 Rename:
 Sb_RenameFiles()
 return
+
+
+;/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\
+; Menu Options
+;\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/
+
+Menu_File-CustomTrack:
+	selectedfile := FileSelectFile("", A_ScriptDir, "Please select the file", "*pdf")
+
+	msgtext := "Please enter the track name"
+	InputBox, u_trackname, %msgtext%, %msgtext%
+	msgtext := "Please enter the date of racing for this file in YYYYMMDD format"
+	InputBox, u_date, %msgtext%, %msgtext%
+	; l_date := Fn_DateParser(u_date)
+	msgtext := "Please enter the platforms for this track to appear on. Example: tvg,iowa,4njbets"
+	InputBox, u_platforms, %msgtext%, %msgtext%
+	l_platforms := StrSplit(u_platforms,",")
+	if (!l_platforms.Length()) {
+		msg("platforms not understood or erroneous. The application will restart")
+		Reload
+	}
+	msgtext := "Enter 1 if this track is international, otherwise enter 0"
+	InputBox, u_international, %msgtext%, %msgtext%
+	if (u_international = "1") {
+		l_international := 1
+	} else if (u_international = "0") {
+		l_international := 0
+	} else {
+		l_international := 1 ;default to 1 if input not understood
+	}
+
+	Fn_InsertData(para_Key, u_trackname, u_date, selectedfile, l_platforms, l_international)
+	Goto, Parse
+return
+
+
 
 ;/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\
 ; Subroutines
@@ -523,7 +584,6 @@ Fn_JustGetDate(para_String)
 		l_TimeStamp = %RE_TimeStamp1%%RE_TimeStamp2%%RE_TimeStamp3%
 		return %l_TimeStamp%
 	}
-;Else
 return ERROR
 }
 
@@ -760,11 +820,12 @@ Gui, Add, Text, x168 y0 w50 +Right, v%The_VersionNumb%
 Gui, Font
 
 
-Gui,Add,Button,x0 y60 w43 h30 gParse,PARSE ;gMySubroutine
-Gui,Add,Button,x50 y60 w120 h30 gRename,RENAME FILES ;gMySubroutine
+Gui,Add,Button,x0 y60 w43 h30 gParse,PARSE
+Gui,Add,Button,x50 y60 w120 h30 gRename,RENAME FILES
 
 Gui,Add,Button,x200 y60 w143 h30 gEditAssoc,EDIT ASSOC
 Gui,Add,Button,x350 y60 w143 h30 gEditName,EDIT TRACK NAME
+Gui,Add,Button,x350 y26 w143 h30 gEditString,EDIT STRING
 Gui,Add,Button,x500 y60 w143 h30 gEditDate,EDIT DATE
 
 Gui,Add,Button,x650 y60 w143 h30 gDelete,DELETE RECORD
@@ -777,6 +838,7 @@ Gui,Show,h600 w800, %The_ProjectName%
 ;Menu
 Menu, FileMenu, Add, E&xit`tCtrl+Q, Menu_File-Quit
 Menu, FileMenu, Add, R&estart`tCtrl+R, Menu_File-Restart
+Menu, FileMenu, Add, I&nsert Track`tCtrl+I, Menu_File-CustomTrack
 Menu, MenuBar, Add, &File, :FileMenu  ; Attach the sub-menu that was created above
 
 Menu, HelpMenu, Add, &About, Menu_About
@@ -813,27 +875,27 @@ exitapp
 ;Create Directory and install needed file(s)
 Sb_InstallFiles()
 {
-FileCreateDir, %A_ScriptDir%\Data\
-FileCreateDir, %A_ScriptDir%\Data\Temp\
-FileInstall, Data\PDFtoTEXT.exe, %A_ScriptDir%\Data\PDFtoTEXT.exe, 1
+	FileCreateDir, %A_ScriptDir%\Data\
+	FileCreateDir, %A_ScriptDir%\Data\Temp\
+	FileInstall, Data\PDFtoTEXT.exe, %A_ScriptDir%\Data\PDFtoTEXT.exe, 1
 }
 
 Sb_GlobalNameSpace()
 {
-global
+	global
 
-Path_PDFtoHTML = %A_ScriptDir%\Data\
-AllTracks_Array := {Key:"", TrackName:"", DateTrack:"", FileName:""}
-AllTracks_ArraX = 1
-FirstGBLoop = 1
-;pdf parsing paths
-exepath := A_ScriptDir "\Data\PDFtoTEXT.exe"
-txtpath := A_ScriptDir "\Data\TEMPPDFTEXT.txt"
+	Path_PDFtoHTML = %A_ScriptDir%\Data\
+	AllTracks_Array := {Key:"", TrackName:"", DateTrack:"", FileName:""}
+	AllTracks_ArraX = 1
+	FirstGBLoop = 1
+	;pdf parsing paths
+	exepath := A_ScriptDir "\Data\PDFtoTEXT.exe"
+	txtpath := A_ScriptDir "\Data\TEMPPDFTEXT.txt"
 
-tomorrow := a_now	
-tomorrow += 1, days
-formattime, tomorrowsyear, %tomorrow%, yyyy 
-formattime, tomorrow_date, %tomorrow%, yyyyMMdd
+	tomorrow := a_now	
+	tomorrow += 1, days
+	formattime, tomorrowsyear, %tomorrow%, yyyy 
+	formattime, tomorrow_date, %tomorrow%, yyyyMMdd
 }
 
 
@@ -856,7 +918,7 @@ fn_Parsepdf(para_FilePath) {
 
 Fn_Filename(para_trackname,para_date)
 {
-Global
+	global
 	if (!Options_suffix) {
 		Options_suffix := ""
 	}
