@@ -4,7 +4,7 @@
     "description": "Renames FreePPs pdf files; then generates html for use with the normal FreePPs process.",
     "main": "app.ahk",
     "scripts": {
-        "newinstall": "yarn install --modules-folder ./Lib"
+        "newinstall": "yarn install --modules-folder ./lib"
     },
     "repository": {
         "type": "git",
@@ -13,8 +13,10 @@
     "dependencies": {
         "json.ahk": "chunjee/json.ahk",
         "sort-array.ahk": "chunjee/sort-array.ahk",
-        "unit-testing.ahk": "github:chunjee/unit-testing.ahk",
         "util-misc.ahk": "gist:cf6c862be8fa18c546d2fd67d86f84aa"
+    },
+    "devdependencies": {
+        "unit-testing.ahk": "github:chunjee/unit-testing.ahk"
     },
     "author": "Shawn Brooker",
     "license": "MIT"
