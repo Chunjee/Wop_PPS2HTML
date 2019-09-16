@@ -17,17 +17,16 @@ The_VersionNumb := "3.5.0"
 ;Dependencies
 #include %A_ScriptDir%\Functions
 #include inireadwrite.ahk
+#include time.ahk
+
+#include %A_ScriptDir%\lib
 #include sort_array.ahk
 #include json.ahk
 #include util_misc.ahk
-#include time.ahk
 #include wrappers.ahk
-
-;new
-#include %A_ScriptDir%\Lib
 #include transformStringVars.ahk\export.ahk
 #include util-array.ahk\export.ahk
-#include biga.ahk\export.ahk
+; #include biga.ahk\export.ahk
 
 
 
