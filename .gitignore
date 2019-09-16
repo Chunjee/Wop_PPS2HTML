@@ -1,3 +1,30 @@
+# Modules Folder
+lib
+
+# Dependency directories
+node_modules/
+jspm_packages/
+
+# logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Yarn Integrity file
+.yarn-integrity
+
+# Folder config file
+Desktop.ini
+
+# Recycle Bin used on file shares
+$RECYCLE.BIN/
+
+# Mac crap
+.DS_Store
+
+
 #################
 ## Selective
 #################
@@ -180,14 +207,6 @@ App_Data/*.ldf
 Thumbs.db
 ehthumbs.db
 
-# Folder config file
-Desktop.ini
-
-# Recycle Bin used on file shares
-$RECYCLE.BIN/
-
-# Mac crap
-.DS_Store
 
 
 #############
