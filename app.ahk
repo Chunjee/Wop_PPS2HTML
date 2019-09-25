@@ -3,8 +3,6 @@
 ;\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/
 ; Renames FreePPs pdf files; then generates html for use with the normal FreePPs process.
 
-
-
 ;~~~~~~~~~~~~~~~~~~~~~
 ;Compile Options
 ;~~~~~~~~~~~~~~~~~~~~~
@@ -12,22 +10,23 @@ SetBatchLines -1 ;Go as fast as CPU will allow
 #NoTrayIcon
 #SingleInstance force
 The_ProjectName := "PPS2HTML"
-The_VersionNumb := "3.5.0"
+The_VersionNumb := "3.6.0"
 
 ;Dependencies
-#include %A_ScriptDir%\Functions
-#include inireadwrite.ahk
-#include time.ahk
+#Include %A_ScriptDir%\lib
+#Include json.ahk\export.ahk
+#Include util-misc.ahk\export.ahk
+#Include sort-array.ahk\export.ahk
+#Include wrappers.ahk\export.ahk
+#Include transformStringVars.ahk\export.ahk
+#Include util-array.ahk\export.ahk
+#Include dateparser.ahk\export.ahk
+#Include inireadwrite.ahk
+; #include time.ahk
 
-#include %A_ScriptDir%\lib
-#include sort_array.ahk
-#include json.ahk
-#include util_misc.ahk
-#include wrappers.ahk
-#include transformStringVars.ahk\export.ahk
-#include util-array.ahk\export.ahk
-; #include biga.ahk\export.ahk
-
+#Include %A_ScriptDir%\node_modules
+#Include biga.ahk\export.ahk
+A := new biga()
 
 
 ;/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\
@@ -48,28 +47,6 @@ if (Fn_InArray(CL_Args,"auto")) {
 	AUTOMODE := true
 }
 
-;;Load the config file and check that it loaded completely
-settings_fileloc := A_ScriptDir "\Data\config.ini"
-Fn_InitializeIni(settings_fileloc)
-Fn_LoadIni(settings_fileloc)
-if (Ini_Loaded != 1) {
-	msg("There was a problem reading the config.ini file. " The_ProjectName " will quit. (Copy a working replacement config.ini file to " A_ScriptDir)
-	exitapp
-}
-
-
-;Just a quick conversion
-Options_TVG3PrefixURL := fn_ReplaceStrings("{", "[", Options_TVG3PrefixURL)
-Options_TVG3PrefixURL := fn_ReplaceStrings("}", "]", Options_TVG3PrefixURL)
-
-
-;;Import Existing Track DB File
-FileCreateDir, %Options_DBLocation%
-FileRead, The_MemoryFile, %Options_DBLocation%\DB.json
-AllTracks_Array := JSON.parse(The_MemoryFile)
-if (!AllTracks_Array) {
-	AllHorses_Array := []
-}
 
 ;;Import and parse settings file
 FileRead, The_MemoryFile, % A_ScriptDir "\Data\settings.json"
@@ -79,11 +56,29 @@ if (!IsObject(AllTracks_Array)) {
 	AllTracks_Array := []
 }
 
-; Goto AutoDownload
+;;Import Existing Track DB File
+FileRead, The_MemoryFile, % Settings.DBLocation
+if (StrLen(The_MemoryFile) > 4) {
+	AllTracks_Array := JSON.parse(The_MemoryFile)
+} else {
+	AllTracks_Array := []
+}
+
+;;Load the config file and check that it loaded completely
+Fn_InitializeIni(Settings.trackMappingConfig)
+Fn_LoadIni(Settings.trackMappingConfig)
+if (Ini_Loaded != 1) {
+	msg("There was a problem reading the config.ini file. " The_ProjectName " will quit. (Copy a working replacement config.ini file to " Settings.trackMappingConfig "`nYou may also need to check the Settings.trackMappingConfig in ./Data/settings.json" )
+	exitapp
+}
 
 ;/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\
 ; MAIN
 ;\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/
+
+; Consider downloading files here
+
+
 ;;Loop all pdfs
 Parse:
 
@@ -176,8 +171,10 @@ if (Settings.parsing) {
 				}
 				;; Pull trackname from ini lookup if specified
 				if (value.configkeylookup != "") {
-					The_TrackName := fn_iniTrackLookup(value.configkeylookup, RegExResult)
-					if (!The_TrackName) {
+					vKey := A.trim(value.configkeylookup,"[]")
+					var := transformStringVars("%vKey%_%RegExResult%")
+					The_TrackName := %var%
+					if (A.isUndefined(The_TrackName)) {
 						msg("Searched config.ini under '" value.configkeylookup "' key for '" RegExResult "' and found nothing. Update the file")
 					}
 				}
@@ -229,24 +226,11 @@ if (Settings.blacklist) {
 	}
 }
 
-; Old folder processing
-; loop, % The_ListofDirs.MaxIndex()
-; {
-; 	currentsearch := The_ListofDirs[A_Index]
-; 	loop, %currentsearch%\*.pdf, R 
-; 	{
-; 		;; process any file encountered by recursive search:
-; 		fn_ProcessFile(A_LoopFileFullPath)
-; 	}
-; }
-
-
 
 ;Sort all Array Content by DateTrack ; No not do in descending order as this will flip the output. Sat,Fri,Thur
 ;Fn_Sort2DArrayFast(AllTracks_Array, "DateTrack")
-Fn_Sort2DArray(AllTracks_Array,"DateTrack")
-Fn_Sort2DArray(AllTracks_Array,"Key")
-
+AllTracks_Array := A.sortBy(AllTracks_Array,"DateTrack")
+AllTracks_Array := A.sortBy(AllTracks_Array,"Key")
 
 FormatTime, Today, , yyyyMMdd
 LV_Delete()
@@ -262,7 +246,7 @@ LV_ModifyCol()
 ; JSON Generation
 ;\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/
 FormatTime, Today, , yyyyMMdd
-FileDelete, %A_ScriptDir%\%Options_AdminConsoleFileName%
+FileDelete, % A_ScriptDir "\" Settings.AdminConsoleFileName
 Data_json := []
 loop, % AllTracks_Array.MaxIndex() {
 	;msgbox, % AllTracks_Array[A_Index,"Date"] " vs " Today
@@ -298,30 +282,11 @@ loop, % AllTracks_Array.MaxIndex() {
 	}
 }
 
-if (Options_ExportAdminConsole = 1) {
-	FileAppend, % JSON.stringify(Data_json), %A_ScriptDir%\%Options_AdminConsoleFileName%
+if (Settings.AdminConsoleFileName) {
+	FileAppend, % JSON.stringify(Data_json), % A_ScriptDir "\" Settings.AdminConsoleFileName
 }
 
-;/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\
-; HTML Generation
-;\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/
-if (Options_ExportDrupalHTML = 1) {
-	Fn_InsertText("<!--=TVG Drupal=---------------------------------------->")
-	
-	Keys := []
-	loop, % AllTracks_Array.MaxIndex() {
-		x := AllTracks_Array[A_Index,"Key"]
-		if (fn_InArray(Keys,x) = false) { ; push new item if missing from the array
-			; msgbox, % "pushing " . x
-			Keys.push(x)
-		}
-	}
-	Fn_SortArray(Keys)
-	;;Export Each Track type to HTML
-	loop, % Keys.MaxIndex() {
-		Fn_Export(Keys[A_Index], Options_TVG3PrefixURL)
-	}
-}
+
 
 
 ;Kick Array items over 30 days old out
@@ -333,8 +298,8 @@ Fn_RemoveDatedKeysInArray("DateTrack", AllTracks_Array)
 
 ;;Export Array as a JSON file
 The_MemoryFile := JSON.stringify(AllTracks_Array)
-FileDelete, %Options_DBLocation%\DB.json
-FileAppend, %The_MemoryFile%, %Options_DBLocation%\DB.json
+FileDelete, % Settings.DBLocation
+FileAppend, %The_MemoryFile%, % Settings.DBLocation
 
 if (AUTOMODE) {
 	Sb_RenameFiles()
@@ -469,7 +434,7 @@ return
 
 Sb_RenameFiles()
 {
-Global
+global
 
 	;Read each track in the array and write to HTML if it matches the current key (GB/IR, Australia, etc)
 	Loop % AllTracks_Array.MaxIndex()
@@ -485,17 +450,15 @@ Global
 		if (!InStr(l_OldFileName,".pdf")) {
 			continue
 		}
-		; msgbox, %l_OldFileName% %A_ScriptDir%\%l_NewFileName%
 		FileCopy, %l_OldFileName%, %A_ScriptDir%\%l_NewFileName%, 1
-		; FileMove, %A_ScriptDir%\%l_OldFileName%, %A_ScriptDir%\%l_NewFileName%, 1
 		;if the filemove was unsuccessful for any reason, tell user
 		if (Errorlevel != 0) {
-			msg("There was a problem renaming the following: " l_OldFileName " (Permissions\FileInUse)")
+			msg("There was a problem renaming the following: " l_OldFileName " (typically Permissions\FileInUse)")
 		} else {
 			if (InStr(l_OldFileName, A_ScriptDir)) { ;file is in same dir as exe, delete if move was success
 				FileDelete, %l_OldFileName%
 				if (Errorlevel != 0) {
-					msg("There was a problem deleting the old file: " l_OldFileName " (Permissions\FileInUse)")
+					msg("There was a problem deleting the old file: " l_OldFileName " (typically Permissions\FileInUse)")
 				}
 			}
 		}
@@ -614,56 +577,11 @@ Fn_GetModifiedDate(para_String) ;Example Input: "20140730Scottsville"
 	}
 }
 
-fn_iniTrackLookup(para_iniSection,para_TrackCode)
-{
-Global settings_fileloc
-
-	loop, Read, %settings_fileloc%
-	{
-		;Remember the INI key value for each section until a match has been found
-		if (InStr(A_LoopReadLine, "]")) {
-			l_CurrentIniKey := A_LoopReadLine
-		}
-		
-		;Cut each track line into a psudo array and see if it matches the parameter track code
-		ConfigArray := StrSplit(A_LoopReadLine, "=")
-		if (l_CurrentIniKey = para_iniSection && ConfigArray[1] = para_TrackCode) {
-			return % ConfigArray[2]
-		}
-	}
-	return false
-}
-
-
-Fn_FindTrackIniKey(para_TrackCode)
-{
-Global settings_fileloc
-
-	loop, Read, %settings_fileloc%
-	{
-		;Remember the INI key value for each section until a match has been found
-		IfInString, A_LoopReadLine, ]
-		{
-			l_CurrentIniKey := A_LoopReadLine
-		}
-		
-		;Cut each track line into a psudo array and see if it matches the parameter track code
-		ConfigArray := StrSplit(A_LoopReadLine, "=")
-		if (ConfigArray[1] = para_TrackCode && para_TrackCode != "null" && para_TrackCode != "") {
-			;Match found, remove brackets from current ini key and return result
-			StringReplace, l_CurrentIniKey, l_CurrentIniKey, [,,
-			StringReplace, l_CurrentIniKey, l_CurrentIniKey, ],,
-			return % l_CurrentIniKey
-		}
-	}
-	return "null"
-}
-
 
 ;This function inserts each track to an array that later gets sorted and exported to HTML
 Fn_InsertData(para_Key, para_TrackName, para_Date, para_OldFileName, para_brand, para_International := 1) 
 {
-Global
+global
 
 	;Find out how big the array is currently
 	AllTracks_ArraX := AllTracks_Array.MaxIndex()
@@ -673,10 +591,9 @@ Global
 	}
 
 	;See if the Track/Date is already present in the array. if yes, do not insert again
-	loop, % AllTracks_Array.MaxIndex()
-	{
+	loop, % AllTracks_Array.MaxIndex() {
 		if (para_Date . para_TrackName = AllTracks_Array[A_Index,"Date"] . AllTracks_Array[A_Index,"TrackName"]) {
-			;Msgbox, %para_TrackName%%para_Date% already exists in this array
+			; msg(para_TrackName para_Date " already exists in the db, cannot be added")
 			return false
 		}
 	}
@@ -704,7 +621,7 @@ Global
 
 Fn_Export(para_Key, para_URLLead)
 {
-Global
+global
 
 	l_Today = %A_YYYY%%A_MM%%A_DD%
 	outputflag := false
@@ -789,7 +706,7 @@ Fn_InsertText(l_CurrentLine)
 ;This function just inserts a line of text
 Fn_InsertText(para_Text) 
 {
-Global
+global
 
 	FileAppend, %para_Text%`n, % The_HMTLFile
 }
@@ -798,7 +715,7 @@ Global
 ;This function inserts a blank line. How worthless 
 Fn_InsertBlank(void)
 {
-Global
+global
 
 	FileAppend, `n, % The_HMTLFile
 }
@@ -918,8 +835,11 @@ fn_Parsepdf(para_FilePath) {
 Fn_Filename(para_trackname,para_date)
 {
 	global
-	if (!Options_suffix) {
-		Options_suffix := ""
+	if (!Settings.suffix) {
+		Settings.suffix := ""
+	}
+	if (!Settings.prefix) {
+		Settings.prefix := ""
 	}
 	para_trackname := StrReplace(para_trackname," ","_")
 	return para_trackname . para_date . Options_suffix ".pdf"
