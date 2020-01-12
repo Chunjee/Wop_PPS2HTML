@@ -10,9 +10,10 @@ SetBatchLines -1 ;Go as fast as CPU will allow
 #NoTrayIcon
 #SingleInstance force
 The_ProjectName := "PPS2HTML"
-The_VersionNumb := "3.6.0"
+The_VersionNumb := "3.8.0"
 
 ;Dependencies
+#Include gui.ahk
 #Include %A_ScriptDir%\lib
 #Include json.ahk\export.ahk
 #Include util-misc.ahk\export.ahk
@@ -22,11 +23,12 @@ The_VersionNumb := "3.6.0"
 #Include util-array.ahk\export.ahk
 #Include dateparser.ahk\export.ahk
 #Include inireadwrite.ahk
-; #include time.ahk
 
+; npm
 #Include %A_ScriptDir%\node_modules
 #Include biga.ahk\export.ahk
-A := new biga()
+#Include string-similarity.ahk\export.ahk
+
 
 
 ;/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\
@@ -34,8 +36,7 @@ A := new biga()
 ;\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/
 
 ;;Startup special global variables
-Sb_GlobalNameSpace()
-Sb_InstallFiles()
+A := new biga()
 GUI()
 ;; Make some special vars for config file date prediction
 Tomorrow := %A_Now%
@@ -43,7 +44,7 @@ sb_IncrementDate()
 
 ;Check for CommandLineArguments
 CL_Args = StrSplit(1 , "|")
-if (Fn_InArray(CL_Args,"auto")) {
+if (A.includes(CL_Args,"auto")) {
 	AUTOMODE := true
 }
 
@@ -65,12 +66,8 @@ if (StrLen(The_MemoryFile) > 4) {
 }
 
 ;;Load the config file and check that it loaded completely
-Fn_InitializeIni(Settings.trackMappingConfig)
-Fn_LoadIni(Settings.trackMappingConfig)
-if (Ini_Loaded != 1) {
-	msg("There was a problem reading the config.ini file. " The_ProjectName " will quit. (Copy a working replacement config.ini file to " Settings.trackMappingConfig "`nYou may also need to check the Settings.trackMappingConfig in ./Data/settings.json" )
-	exitapp
-}
+Fn_LoadIni()
+
 
 ;/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\
 ; MAIN
@@ -79,18 +76,11 @@ if (Ini_Loaded != 1) {
 ; Consider downloading files here
 
 
-;;Loop all pdfs
+;; Loop all pdfs
 Parse:
+; reload ini track mappings
+Fn_LoadIni()
 
-;;Clear the old html file ;added some filesize checking for added safety
-The_HMTLFile := A_ScriptDir "\html.txt"
-IfExist, %The_HMTLFile%
-{
-	FileGetSize, HTMLSize , %The_HMTLFile%, M
-	if (HTMLSize <= 2) {
-		FileDelete, %The_HMTLFile%
-	}
-}
 
 The_ListofDirs := Settings.dirs
 The_ListofDirs.push(A_ScriptDir)
@@ -159,7 +149,7 @@ if (Settings.parsing) {
 					FormatTime, The_Date, %local_date%, yyyyMMdd
 					; msgbox, % "parsed date is " local_date "| decrementday is " The_Date
 				}
-
+				
 
 				;; Pull trackname from pdf text if specified
 				if (value.pdftracknamepattern != "") {
@@ -404,6 +394,9 @@ Menu_File-CustomTrack:
 	InputBox, u_trackname, %msgtext%, %msgtext%
 	msgtext := "Please enter the date of racing for this file in YYYYMMDD format"
 	InputBox, u_date, %msgtext%, %msgtext%
+	msgtext := "Please enter the association of this file (France, Sweden, UK#IRE, etc)"
+	defaultText := Fn_GuessAssociation(AllTracks_Array, u_trackname)
+	InputBox, u_association, %msgtext%, %msgtext%, , , , , , , , defaultText
 	; l_date := Fn_DateParser(u_date)
 	msgtext := "Please enter the platforms for this track to appear on. Example: tvg,iowa,4njbets"
 	InputBox, u_platforms, %msgtext%, %msgtext%
@@ -422,7 +415,7 @@ Menu_File-CustomTrack:
 		l_international := 1 ;default to 1 if input not understood
 	}
 
-	Fn_InsertData(para_Key, u_trackname, u_date, selectedfile, l_platforms, l_international)
+	Fn_InsertData(u_association, u_trackname, u_date, selectedfile, l_platforms, l_international)
 	Goto, Parse
 return
 
@@ -434,7 +427,7 @@ return
 
 Sb_RenameFiles()
 {
-global
+	global
 
 	;Read each track in the array and write to HTML if it matches the current key (GB/IR, Australia, etc)
 	Loop % AllTracks_Array.MaxIndex()
@@ -450,7 +443,12 @@ global
 		if (!InStr(l_OldFileName,".pdf")) {
 			continue
 		}
-		FileCopy, %l_OldFileName%, %A_ScriptDir%\%l_NewFileName%, 1
+		if (!A.isUndefinded(Settings.exportDir)) {
+			exportPath := exportDir "\" l_NewFileName
+		} else {
+			exportPath := A_ScriptDir "\" l_NewFileName
+		}
+		FileCopy, %l_OldFileName%, %exportPath%, 1
 		;if the filemove was unsuccessful for any reason, tell user
 		if (Errorlevel != 0) {
 			msg("There was a problem renaming the following: " l_OldFileName " (typically Permissions\FileInUse)")
@@ -493,6 +491,7 @@ sb_IncrementDate(para_StartDate = "")
 	FormatTime, TOM_M, %Tomorrow%, M
 }
 
+
 ;Gets the timestamp out of a filename and converts it into a day of the week name
 Fn_GetWeekName(para_String) ;Example Input: "20140730Scottsville"
 {
@@ -509,6 +508,7 @@ Fn_GetWeekName(para_String) ;Example Input: "20140730Scottsville"
 		return false
 	}
 }
+
 
 Fn_RemoveDatedKeysInArray(para_Key,para_Array)
 {
@@ -537,6 +537,7 @@ Fn_RemoveDatedKeysInArray(para_Key,para_Array)
 		}
 	}
 }
+
 
 Fn_JustGetDate(para_String)
 {
@@ -581,7 +582,7 @@ Fn_GetModifiedDate(para_String) ;Example Input: "20140730Scottsville"
 ;This function inserts each track to an array that later gets sorted and exported to HTML
 Fn_InsertData(para_Key, para_TrackName, para_Date, para_OldFileName, para_brand, para_International := 1) 
 {
-global
+	global
 
 	;Find out how big the array is currently
 	AllTracks_ArraX := AllTracks_Array.MaxIndex()
@@ -618,12 +619,11 @@ global
 }
 
 
-
 Fn_Export(para_Key, para_URLLead)
 {
-global
+	global
 
-	l_Today = %A_YYYY%%A_MM%%A_DD%
+	l_Today := A_YYYY A_MM A_DD
 	outputflag := false
 	
 	;Create HTML Title if any of that kind of track exist
@@ -683,7 +683,6 @@ global
 			outputflag := true
 		}
 	}
-	
 	if ( AllTracks_ArraX >= 1) {
 		Fn_InsertText("<br />")
 	}
@@ -706,8 +705,7 @@ Fn_InsertText(l_CurrentLine)
 ;This function just inserts a line of text
 Fn_InsertText(para_Text) 
 {
-global
-
+	global
 	FileAppend, %para_Text%`n, % The_HMTLFile
 }
 
@@ -715,103 +713,26 @@ global
 ;This function inserts a blank line. How worthless 
 Fn_InsertBlank(void)
 {
-global
-
+	global
 	FileAppend, `n, % The_HMTLFile
 }
 
 
-;/--\--/--\--/--\--/--\--/--\
-; GUI
-;\--/--\--/--\--/--\--/--\--/
-GUI()
+; this function makes a best guess at the association of a track, else returns ""
+Fn_GuessAssociation(param_alltracks, param_trackname)
 {
-global
-;Title
-Gui, Font, s14 w70, Arial
-Gui, Add, Text, x2 y4 w220 +Center, %The_ProjectName%
-Gui, Font, s10 w70, Arial
-Gui, Add, Text, x168 y0 w50 +Right, v%The_VersionNumb%
+	A := new biga()
+	stringSimilarity := new stringsimilarity()
 
-Gui, Font
-
-
-Gui,Add,Button,x0 y60 w43 h30 gParse,PARSE
-Gui,Add,Button,x50 y60 w120 h30 gRename,RENAME FILES
-
-Gui,Add,Button,x200 y60 w143 h30 gEditAssoc,EDIT ASSOC
-Gui,Add,Button,x350 y60 w143 h30 gEditName,EDIT TRACK NAME
-Gui,Add,Button,x350 y26 w143 h30 gEditString,EDIT STRING
-Gui,Add,Button,x500 y60 w143 h30 gEditDate,EDIT DATE
-
-Gui,Add,Button,x650 y60 w143 h30 gDelete,DELETE RECORD
-Gui,Add,ListView,x0 y100 w800 h450 Grid vGUI_Listview, Index|Track|Assoc|Date
-	; Gui, Add, ListView, x2 y70 w490 h536 Grid NoSort +ReDraw gDoubleClick vGUI_Listview, #|Status|RC|Name|Race|
-
-Gui,Show,h600 w800, %The_ProjectName%
-
-
-;Menu
-Menu, FileMenu, Add, E&xit`tCtrl+Q, Menu_File-Quit
-Menu, FileMenu, Add, R&estart`tCtrl+R, Menu_File-Restart
-Menu, FileMenu, Add, I&nsert Track`tCtrl+I, Menu_File-CustomTrack
-Menu, MenuBar, Add, &File, :FileMenu  ; Attach the sub-menu that was created above
-
-Menu, HelpMenu, Add, &About, Menu_About
-Menu, HelpMenu, Add, &Confluence`tCtrl+H, Menu_Confluence
-Menu, MenuBar, Add, &Help, :HelpMenu
-
-Gui, Menu, MenuBar
-return
-
-;Menu Shortcuts
-Menu_Confluence:
-Run https://betfairus.atlassian.net/wiki/spaces/wog/pages/10650365/Ops+Tool+-+PPS2HTML+Automates+Free+Past+Performance+File+Renaming+and+HTML
-return
-
-Menu_About:
-Msgbox, Renames Free PP files and generated HTML from all files run through the system. `nv%The_VersionNumb%
-return
-
-Menu_File-Restart:
-Reload
-
-Menu_File-Quit:
-exitapp
-
-GuiClose:
-exitapp
-}
-
-
-;/--\--/--\--/--\--/--\--/--\
-; Subroutines
-;\--/--\--/--\--/--\--/--\--/
-
-;Create Directory and install needed file(s)
-Sb_InstallFiles()
-{
-	FileCreateDir, %A_ScriptDir%\Data\
-	FileCreateDir, %A_ScriptDir%\Data\Temp\
-	FileInstall, Data\PDFtoTEXT.exe, %A_ScriptDir%\Data\PDFtoTEXT.exe, 1
-}
-
-Sb_GlobalNameSpace()
-{
-	global
-
-	Path_PDFtoHTML = %A_ScriptDir%\Data\
-	AllTracks_Array := {Key:"", TrackName:"", DateTrack:"", FileName:""}
-	AllTracks_ArraX = 1
-	FirstGBLoop = 1
-	;pdf parsing paths
-	exepath := A_ScriptDir "\Data\PDFtoTEXT.exe"
-	txtpath := A_ScriptDir "\Data\TEMPPDFTEXT.txt"
-
-	tomorrow := a_now	
-	tomorrow += 1, days
-	formattime, tomorrowsyear, %tomorrow%, yyyy 
-	formattime, tomorrow_date, %tomorrow%, yyyyMMdd
+	tracknames := A.map(param_alltracks, "Trackname")
+	associations := A.map(param_alltracks, "Key")
+	minialltracks := A.zip(tracknames, associations)
+	; msgbox, % A.printObj(minialltracks)
+	matchingObj := A.find(minialltracks, [1, param_trackname])
+	if (A.isUndefined(matchingObj.2)) {
+		return false
+	}
+	return matchingObj.2
 }
 
 
