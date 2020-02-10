@@ -10,7 +10,7 @@ SetBatchLines -1 ;Go as fast as CPU will allow
 #NoTrayIcon
 #SingleInstance force
 The_ProjectName := "PPS2HTML"
-The_VersionNumb := "3.8.0"
+The_VersionNumb := "3.8.3"
 
 ;Dependencies
 #Include gui.ahk
@@ -65,10 +65,6 @@ if (StrLen(The_MemoryFile) > 4) {
 	AllTracks_Array := []
 }
 
-;;Load the config file and check that it loaded completely
-Fn_LoadIni()
-
-
 ;/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\
 ; MAIN
 ;\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/
@@ -79,8 +75,8 @@ Fn_LoadIni()
 ;; Loop all pdfs
 Parse:
 ; reload ini track mappings
-Fn_LoadIni()
-
+Fn_InitializeIni(Settings.trackMappingConfig)
+Fn_LoadIni(Settings.trackMappingConfig)
 
 The_ListofDirs := Settings.dirs
 The_ListofDirs.push(A_ScriptDir)
@@ -118,6 +114,10 @@ if (Settings.parsing) {
 
 				; delete any duplicate downloads
 				if (value.do = "delete") {
+					FileDelete, % A_LoopFileFullPath
+					continue
+				}
+				if (A.indexOf(value.do, "delete") != 0) {
 					FileDelete, % A_LoopFileFullPath
 					continue
 				}
@@ -164,6 +164,7 @@ if (Settings.parsing) {
 					vKey := A.trim(value.configkeylookup,"[]")
 					var := transformStringVars("%vKey%_%RegExResult%")
 					The_TrackName := %var%
+					; msgbox, % var "  /   " The_TrackName
 					if (A.isUndefined(The_TrackName)) {
 						msg("Searched config.ini under '" value.configkeylookup "' key for '" RegExResult "' and found nothing. Update the file")
 					}
@@ -196,7 +197,7 @@ if (Settings.parsing) {
 		}
 	}
 	if (unhandledFiles.Length() > 0) {
-		msg("Nothing handling the following files:`n" Array_Print(unhandledFiles) "`n`nUpdate .\Data\settings.json immediately and re-run. Renaming files by hand is NOT advised.")
+		msg("Nothing handling the following files:`n" A.join(A.map(unhandledFiles, A.trim), ", ") "`n`nUpdate .\Data\settings.json immediately and re-run. Renaming files by hand is NOT advised.")
 	}
 	
 
@@ -210,8 +211,7 @@ if (Settings.parsing) {
 ; Remove blacklisted tracks
 ;\--/--\--/--\--/
 if (Settings.blacklist) {
-	for key, value in Settings.blacklist
-	{
+	for key, value in Settings.blacklist {
 
 	}
 }
@@ -360,7 +360,7 @@ selected := LV_GetNext(1, Focused)
 if (selected > 0) {
 	LV_GetText(INDEX, selected, 1) ;INDEX
 	msg("Deleting: " AllTracks_Array[INDEX,"DateTrack"])
-	AllTracks_Array[INDEX,"Date"] := 20100101 ;Will be automatically purged because of old date
+	AllTracks_Array[INDEX,"Date"] := 20010101 ;Will be automatically purged because of old date
 	Goto, Parse
 }
 return
@@ -396,7 +396,7 @@ Menu_File-CustomTrack:
 	InputBox, u_date, %msgtext%, %msgtext%
 	msgtext := "Please enter the association of this file (France, Sweden, UK#IRE, etc)"
 	defaultText := Fn_GuessAssociation(AllTracks_Array, u_trackname)
-	InputBox, u_association, %msgtext%, %msgtext%, , , , , , , , defaultText
+	InputBox, u_association, %msgtext%, %msgtext%, , , , , , , , % defaultText
 	; l_date := Fn_DateParser(u_date)
 	msgtext := "Please enter the platforms for this track to appear on. Example: tvg,iowa,4njbets"
 	InputBox, u_platforms, %msgtext%, %msgtext%
@@ -416,7 +416,6 @@ Menu_File-CustomTrack:
 	}
 
 	Fn_InsertData(u_association, u_trackname, u_date, selectedfile, l_platforms, l_international)
-	Goto, Parse
 return
 
 
@@ -443,10 +442,10 @@ Sb_RenameFiles()
 		if (!InStr(l_OldFileName,".pdf")) {
 			continue
 		}
-		if (!A.isUndefinded(Settings.exportDir)) {
-			exportPath := exportDir "\" l_NewFileName
-		} else {
+		if (A.isUndefined(Settings.exportDir)) {
 			exportPath := A_ScriptDir "\" l_NewFileName
+		} else {
+			exportPath := Settings.exportDir "\" l_NewFileName
 		}
 		FileCopy, %l_OldFileName%, %exportPath%, 1
 		;if the filemove was unsuccessful for any reason, tell user
@@ -462,8 +461,6 @@ Sb_RenameFiles()
 		}
 	}
 }
-
-
 
 ;/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\
 ; Functions
@@ -541,28 +538,12 @@ Fn_RemoveDatedKeysInArray(para_Key,para_Array)
 
 Fn_JustGetDate(para_String)
 {
-;local
 	RegExMatch(para_String, "(\d{4})(\d{2})(\d{2})", RE_TimeStamp)
 	if (RE_TimeStamp1 != "") {
 		l_TimeStamp = %RE_TimeStamp1%%RE_TimeStamp2%%RE_TimeStamp3%
 		return %l_TimeStamp%
 	}
 return ERROR
-}
-
-Fn_GetWeekNameOLD(para_String) ;Example Input: "073014Scottsville"
-{
-	RegExMatch(para_String, "\d{2}(\d{2})(\d{2})(\d{2})", RE_TimeStamp)
-	if (RE_TimeStamp1 != "") {
-		;dddd corresponds to Monday for example
-		FormatTime, l_WeekdayName , 20%RE_TimeStamp3%%RE_TimeStamp1%%RE_TimeStamp2%, dddd
-	}
-	if (l_WeekdayName != "") {
-		return l_WeekdayName
-	}
-	;return a fat error if nothing is found
-	msg("Couldn't understand the date format in " para_String)
-	return "ERROR"
 }
 
 
@@ -741,11 +722,10 @@ Fn_GuessAssociation(param_alltracks, param_trackname)
 ;\--/--\--/--\--/--\--/--\--/
 
 fn_Parsepdf(para_FilePath) {
-	global
-
+	exepath := A_ScriptDir "\Data\PDFtoTEXT.exe"
+	txtpath := A_ScriptDir "\Data\pdftext.txt"
 	RunWait, "%exepath%" "%para_FilePath%" "%txtpath%",, Hide
-	Sleep, 200
-
+	Sleep, 250
 	;;Read the Trackname out of the converted text
 	FileRead, File_PDFTEXT, %txtpath%
 	FileDelete, %txtpath%
