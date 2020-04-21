@@ -10,7 +10,7 @@ SetBatchLines -1 ;Go as fast as CPU will allow
 #NoTrayIcon
 #SingleInstance force
 The_ProjectName := "PPS2HTML"
-The_VersionNumb := "3.8.3"
+The_VersionNumb := "3.9.0"
 
 ;Dependencies
 #Include gui.ahk
@@ -27,8 +27,6 @@ The_VersionNumb := "3.8.3"
 ; npm
 #Include %A_ScriptDir%\node_modules
 #Include biga.ahk\export.ahk
-#Include string-similarity.ahk\export.ahk
-
 
 
 ;/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\
@@ -39,12 +37,12 @@ The_VersionNumb := "3.8.3"
 A := new biga()
 GUI()
 ;; Make some special vars for config file date prediction
-Tomorrow := %A_Now%
+Tomorrow := A_Now
 sb_IncrementDate()
 
 ;Check for CommandLineArguments
 CL_Args = StrSplit(1 , "|")
-if (A.includes(CL_Args,"auto")) {
+if (A.includes(CL_Args, "auto")) {
 	AUTOMODE := true
 }
 
@@ -58,7 +56,7 @@ if (!IsObject(AllTracks_Array)) {
 }
 
 ;;Import Existing Track DB File
-FileRead, The_MemoryFile, % Settings.DBLocation
+FileRead, The_MemoryFile, % transformStringVarsGlobal(Settings.DBLocation)
 if (StrLen(The_MemoryFile) > 4) {
 	AllTracks_Array := JSON.parse(The_MemoryFile)
 } else {
@@ -75,10 +73,10 @@ if (StrLen(The_MemoryFile) > 4) {
 ;; Loop all pdfs
 Parse:
 ; reload ini track mappings
-Fn_InitializeIni(Settings.trackMappingConfig)
-Fn_LoadIni(Settings.trackMappingConfig)
+Fn_InitializeIni(transformStringVarsGlobal(Settings.trackMappingConfig))
+Fn_LoadIni(transformStringVarsGlobal(Settings.trackMappingConfig))
 
-The_ListofDirs := Settings.dirs
+The_ListofDirs := transformStringVarsGlobal(Settings.dirs)
 The_ListofDirs.push(A_ScriptDir)
 
 ;; New folder processing
@@ -86,23 +84,20 @@ if (Settings.parsing) {
 	for key, value in Settings.parsing
 	{
 		;convert string in settings file to a fully qualifed var + string for searching
-		searchdirstring := transformStringVars(value.dir "\*.pdf")
+		searchdirstring := transformStringVarsGlobal(value.dir "\*.pdf")
 		if (value.recursive) {
 			value.recursive := " R"
 		}
 		loop, Files, %searchdirstring%, % value.recursive
 		{
-			if (fn_InArray(AllTracks_Array,A_LoopFileName,"FinalFilename")) { ;; Exit out if the filename is found at all in the finalname array
-				continue
-			}
-			
 			sb_IncrementDate(A_Now)
 			The_TrackName := false
-			RegExResult := fn_QuickRegEx(A_LoopFileName,transformStringVars(value.filepattern))
-			if (value.weeksearch true && RegExResult = false) { ;loop 7 days ahead if user is trying to use a specific date and the file wasn't already found
+			RegExResult := fn_QuickRegEx(A_LoopFileName, transformStringVarsGlobal(value.filepattern))
+			;loop 7 days ahead if user is trying to use a specific date and the file wasn't already found
+			if (value.weeksearch true && RegExResult = false) {
 				loop, 7 {
 					sb_IncrementDate()
-					RegExResult := fn_QuickRegEx(A_LoopFileName,transformStringVars(value.filepattern))
+					RegExResult := fn_QuickRegEx(A_LoopFileName, transformStringVarsGlobal(value.filepattern))
 					if (RegExResult != false) {
 						break
 					}
@@ -111,21 +106,20 @@ if (Settings.parsing) {
 
 			; do for any regex pattern matches in settings file
 			if (RegExResult != false) {
-
-				; delete any duplicate downloads
-				if (value.do = "delete") {
-					FileDelete, % A_LoopFileFullPath
-					continue
-				}
-				if (A.indexOf(value.do, "delete") != 0) {
-					FileDelete, % A_LoopFileFullPath
-					continue
+				
+				; if any "do" values or array
+				if (value.do) {
+					; delete any duplicate downloads
+					if (A.indexOf(value.do, "delete") != 0 || value.do = "delete") {
+						FileDelete, % A_LoopFileFullPath
+						continue
+					}
 				}
 				
 				; parse the filename for a date
 				dateSearchText := A_LoopFileName
 				if (value.prependdate != "") { ;append the date
-					dateSearchText := transformStringVars(value.prependdate) A_LoopFileName
+					dateSearchText := transformStringVarsGlobal(value.prependdate) A_LoopFileName
 				}
 				if (value.weeksearch = true) { ;parse using config specified datestring
 					dateSearchText := TOM_YYYY TOM_MM TOM_DD
@@ -162,7 +156,7 @@ if (Settings.parsing) {
 				;; Pull trackname from ini lookup if specified
 				if (value.configkeylookup != "") {
 					vKey := A.trim(value.configkeylookup,"[]")
-					var := transformStringVars("%vKey%_%RegExResult%")
+					var := transformStringVarsGlobal("%vKey%_%RegExResult%")
 					The_TrackName := %var%
 					; msgbox, % var "  /   " The_TrackName
 					if (A.isUndefined(The_TrackName)) {
@@ -171,9 +165,9 @@ if (Settings.parsing) {
 				}
 				
 				;; Insert data if a trackname and date was verified
-				if (The_TrackName && The_Date) {
+				if (The_TrackName && The_Date && The_Country) {
 					; msg("inserting: " The_TrackName "(" A_LoopFileName ")  with the assosiation: " The_Country)
-					Fn_InsertData(The_Country, Trim(The_TrackName), The_Date, A_LoopFileLongPath, value.brand, value.international)
+					Fn_InsertData(A.startCase(The_Country), Trim(The_TrackName), The_Date, A_LoopFileLongPath, value.brand, value.international)
 				} else {
 					; else is not handled in a seprate loop checking all files below
 				}
@@ -185,7 +179,7 @@ if (Settings.parsing) {
 	unhandledFiles := []
 	for key, value in Settings.parsing
 	{
-		searchdirstring := transformStringVars(value.dir "\*.pdf")
+		searchdirstring := transformStringVarsGlobal(value.dir "\*.pdf")
 		if (value.recursive) {
 			value.recursive := " R"
 		}
@@ -199,7 +193,6 @@ if (Settings.parsing) {
 	if (unhandledFiles.Length() > 0) {
 		msg("Nothing handling the following files:`n" A.join(A.map(unhandledFiles, A.trim), ", ") "`n`nUpdate .\Data\settings.json immediately and re-run. Renaming files by hand is NOT advised.")
 	}
-	
 
 } else {
 	msg("No .\Data\settings.json file found`n`nThe application will quit")
@@ -207,30 +200,35 @@ if (Settings.parsing) {
 }
 
 
+
 ;/--\--/--\--/--\
 ; Remove blacklisted tracks
 ;\--/--\--/--\--/
 if (Settings.blacklist) {
 	for key, value in Settings.blacklist {
-
+		RemovableTracks := A.filter(AllTracks_Array, value) 
+		AllTracks_Array := A.difference(AllTracks_Array, RemovableTracks)
 	}
 }
 
+;Kick Array items over 30 days old out
+AllTracks_Array := A.uniq(AllTracks_Array)
+AllTracks_Array := A.filter(AllTracks_Array, Func("helper_returnNewDates"))
 
 ;Sort all Array Content by DateTrack ; No not do in descending order as this will flip the output. Sat,Fri,Thur
-;Fn_Sort2DArrayFast(AllTracks_Array, "DateTrack")
-AllTracks_Array := A.sortBy(AllTracks_Array,"DateTrack")
-AllTracks_Array := A.sortBy(AllTracks_Array,"Key")
+AllTracks_Array := A.sortBy(AllTracks_Array, ["trackname", "date", "group"])
+
 
 FormatTime, Today, , yyyyMMdd
 LV_Delete()
 ; Array_Gui(AllTracks_Array)
-loop, % AllTracks_Array.MaxIndex() {
-	if (Today <= AllTracks_Array[A_Index,"Date"]) {
-		LV_Add("",A_Index,AllTracks_Array[A_Index,"TrackName"],AllTracks_Array[A_Index,"Key"],AllTracks_Array[A_Index,"Date"])
+loop, % AllTracks_Array.Count() {
+	if (Today <= AllTracks_Array[A_Index,"date"]) {
+		LV_Add("",A_Index,AllTracks_Array[A_Index,"name"],AllTracks_Array[A_Index,"group"],AllTracks_Array[A_Index,"date"])
 	}
 }
 LV_ModifyCol()
+
 
 ;/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\
 ; JSON Generation
@@ -238,49 +236,44 @@ LV_ModifyCol()
 FormatTime, Today, , yyyyMMdd
 FileDelete, % A_ScriptDir "\" Settings.AdminConsoleFileName
 Data_json := []
-loop, % AllTracks_Array.MaxIndex() {
+loop, % AllTracks_Array.Count() {
 	;msgbox, % AllTracks_Array[A_Index,"Date"] " vs " Today
 	if (AllTracks_Array[A_Index,"Date"] >= Today && !InStr(AllTracks_Array[A_Index,"DateTrack"],"null")) {
 		thistrack := {}
-		; build the string to display on the site, defaulting to "[trackname], [weekday]" unless a user defined string exists
-		if (!AllTracks_Array[A_Index,"String"]) {
-			thistrack.name := AllTracks_Array[A_Index,"TrackName"] ", " Fn_GetWeekName(AllTracks_Array[A_Index,"Date"])
-		} else {
-			thistrack.name := AllTracks_Array[A_Index,"String"]
-		}
-		; Do not use the trackname if the track matches it's own key (IE Australia), only use the Weekday name
-		if (AllTracks_Array[A_Index,"TrackName"] == AllTracks_Array[A_Index,"Key"]) {
-			thistrack.name := Fn_GetWeekName(AllTracks_Array[A_Index,"Date"])
-		}
-		thistrack.filename := AllTracks_Array[A_Index,"FinalFilename"]
-		thistrack.date := AllTracks_Array[A_Index,"Date"]
-		thistrack.group := AllTracks_Array[A_Index,"Key"]
-		thistrack.brand := AllTracks_Array[A_Index,"brand"]
-		if (AllTracks_Array[A_Index,"International"] = true) {
-			thistrack.international := true
-		} else {
-			thistrack.international := false
-		}
-		
+		thistrack := AllTracks_Array[A_Index]		
 		;replace some yesteryear placeholder characters
 		thistrack.group := StrReplace(thistrack.group, "#" , "/")
 		thistrack.group := StrReplace(thistrack.group, "_" , " ")
 		;;Append the track to JSON output sorted as it was parsed
 		Data_json.push(thistrack)
-		;if backwards is needed:
-		; Data_json.InsertAt(1,thistrack)
 	}
 }
 
-if (Settings.AdminConsoleFileName) {
-	FileAppend, % JSON.stringify(Data_json), % A_ScriptDir "\" Settings.AdminConsoleFileName
+if (A.isUndefined(Settings.AdminConsoleFileName)) {
+	Settings.AdminConsoleFileName := "data.json"
 }
+FileAppend, % JSON.stringify(A.uniq(Data_json)), % A_ScriptDir "\" Settings.AdminConsoleFileName
 
 
 
 
-;Kick Array items over 30 days old out
-Fn_RemoveDatedKeysInArray("DateTrack", AllTracks_Array)
+
+
+helper_returnNewDates(param_track)
+{
+	global A
+
+	YesterdaysDate := A_Now
+	YesterdaysDate += -1, d
+	YesterdaysDate := A.join(A.slice(YesterdaysDate, 1, 8), "")
+	if (!fn_DateValidate(param_track.date)) {
+		return false
+	}
+	;See if item is new enough to stay in the array
+	if (param_track.date > YesterdaysDate) {
+		return true
+	}
+}
 
 
 ;For Debugging. Show contents of the Array 
@@ -296,7 +289,6 @@ if (AUTOMODE) {
 }
 ;;ALL DONE
 return
-
 
 
 ;/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\
@@ -326,7 +318,7 @@ if (selected > 0) { ;if a number
 	LV_GetText(RowText, selected, 4) ;date
 	msgtext := "Please enter a new date in YYYYMMDD format"
 	InputBox, UserInput, %msgtext%, %msgtext%, , , , , , , ,%RowText%
-	AllTracks_Array[INDEX,"Date"] := UserInput
+	AllTracks_Array[INDEX,"date"] := UserInput
 	Goto, Parse
 }
 return
@@ -334,11 +326,11 @@ return
 EditAssoc:
 selected := LV_GetNext(1, Focused)
 if (selected > 0) {
-	LV_GetText(l_INDEX, selected, 1) ;INDEX
+	LV_GetText(INDEX, selected, 1) ;INDEX
 	LV_GetText(RowText, selected, 3) ;assoc
 	msgtext := "Please enter a new Association (Australia, UK_IRE, etc)"
 	InputBox, UserInput, %msgtext%, %msgtext%, , , , , , , ,%RowText%
-	AllTracks_Array[l_INDEX,"Key"] := UserInput
+	AllTracks_Array[INDEX,"group"] := UserInput
 	Goto, Parse
 }
 return
@@ -350,7 +342,7 @@ if (selected > 0) {
 	LV_GetText(RowText, selected, 2) ;TrackName
 	msgtext := "Please enter a new Trackname"
 	InputBox, UserInput, %msgtext%, %msgtext%, , , , , , , ,%RowText%
-	AllTracks_Array[INDEX,"TrackName"] := UserInput
+	AllTracks_Array[INDEX,"name"] := UserInput
 	Goto, Parse
 }
 return
@@ -428,34 +420,31 @@ Sb_RenameFiles()
 {
 	global
 
-	;Read each track in the array and write to HTML if it matches the current key (GB/IR, Australia, etc)
-	Loop % AllTracks_Array.MaxIndex()
+	; Read each track in the array and perform file renaming
+	loop % AllTracks_Array.Count()
 	{
-		l_OldFileName := AllTracks_Array[A_Index,"FileName"]
-		l_NewFileName := AllTracks_Array[A_Index,"FinalFilename"]
+		thisTrack := AllTracks_Array[A_Index]
 
-		if !FileExist(l_OldFileName) {
-			continue
-		} else {
-			; msgbox, % l_OldFileName " exists atm"
-		}
-		if (!InStr(l_OldFileName,".pdf")) {
+		; skip this item if the original file is gone (doesn't need to be renamed because it doesn't exist)
+		if !FileExist(thisTrack.originalFilePath) {
 			continue
 		}
-		if (A.isUndefined(Settings.exportDir)) {
-			exportPath := A_ScriptDir "\" l_NewFileName
+		; skip if there is no export dir in settings
+		exportDir := transformStringVarsGlobal(Settings.exportDir)
+		if (A.isUndefined(exportDir)) {
+			exportPath := A_ScriptDir "\" thisTrack.filename
 		} else {
-			exportPath := Settings.exportDir "\" l_NewFileName
+			exportPath := exportDir "\" thisTrack.filename
 		}
-		FileCopy, %l_OldFileName%, %exportPath%, 1
-		;if the filemove was unsuccessful for any reason, tell user
+		FileCopy, % thisTrack.originalFilePath, %exportPath%, 1
+		; if the file move was unsuccessful for any reason, tell the user
 		if (Errorlevel != 0) {
-			msg("There was a problem renaming the following: " l_OldFileName " (typically Permissions\FileInUse)")
+			msg("There was a problem renaming the following: " thisTrack.originalFilePath " (typically Permissions\FileInUse)")
 		} else {
-			if (InStr(l_OldFileName, A_ScriptDir)) { ;file is in same dir as exe, delete if move was success
-				FileDelete, %l_OldFileName%
+			if (InStr(thisTrack.originalFilePath, A_ScriptDir)) { ;file is in same dir as exe, delete if move was success
+				FileDelete, % thisTrack.originalFilePath
 				if (Errorlevel != 0) {
-					msg("There was a problem deleting the old file: " l_OldFileName " (typically Permissions\FileInUse)")
+					msg("There was a problem deleting the old file: " thisTrack.originalFilePath " (typically Permissions\FileInUse)")
 				}
 			}
 		}
@@ -490,7 +479,7 @@ sb_IncrementDate(para_StartDate = "")
 
 
 ;Gets the timestamp out of a filename and converts it into a day of the week name
-Fn_GetWeekName(para_String) ;Example Input: "20140730Scottsville"
+Fn_GetWeekName(para_String) ;Example Input: "20140730"
 {
 	RegExMatch(para_String, "(\d{4})(\d{2})(\d{2})", RE_TimeStamp)
 	if (RE_TimeStamp1 != "") {
@@ -503,35 +492,6 @@ Fn_GetWeekName(para_String) ;Example Input: "20140730Scottsville"
 		;throw error and return false if unsuccessful
 		throw error
 		return false
-	}
-}
-
-
-Fn_RemoveDatedKeysInArray(para_Key,para_Array)
-{
-	LastMonth :=
-	LastMonth += -4, d
-	StringTrimRight, LastMonth, LastMonth, 6
-	loop, 33
-	{
-		Loop % para_Array.MaxIndex() {
-		l_DateTrack := para_Array[A_Index,para_Key]
-		if (!fn_DateValidate(para_Array[A_Index,"Date"])) {
-			; Msgbox, % "Really kick out " . para_Array[A_Index,"FinalFilename"] . "? The date ( " . para_Array[A_Index,"Date"] . ") is invalid. Format is ALWAYS YYYYMMDD"
-			para_Array.Remove(A_Index)
-			break
-		}
-		;Convert data out of l_DateTrack to get the weekdayname and new format of timestamp
-		l_WeekdayName := Fn_GetWeekName(l_DateTrack)
-		
-		;See if item is new enough to stay in the array
-		FileDate := Fn_JustGetDate(l_DateTrack)
-			if (FileDate < LastMonth) {
-				para_Array.Remove(A_Index)
-				break
-				;Must break out because A_Index will no longer corrilate to correct array index
-			}
-		}
 	}
 }
 
@@ -561,141 +521,43 @@ Fn_GetModifiedDate(para_String) ;Example Input: "20140730Scottsville"
 
 
 ;This function inserts each track to an array that later gets sorted and exported to HTML
-Fn_InsertData(para_Key, para_TrackName, para_Date, para_OldFileName, para_brand, para_International := 1) 
+Fn_InsertData(para_Key, para_TrackName, para_Date, para_OldFileName, para_brand, para_International := 1)
 {
-	global
+	global AllTracks_Array
+	global A
 
-	;Find out how big the array is currently
-	AllTracks_ArraX := AllTracks_Array.MaxIndex()
-	if (AllTracks_ArraX = "") {
-		;Array is blank, start at 0
-		AllTracks_ArraX = 0
+	
+	thisTrack := { "brand": para_brand
+				 , "date": para_Date
+				 , "filename": Fn_Filename(para_TrackName, para_Date, para_Key)
+				 , "group": para_Key
+				 , "international": para_International
+				 , "name": para_TrackName ", " Fn_GetWeekName(para_Date)
+				 , "string": ""
+
+				 , "trackname": para_TrackName
+				 , "identity": para_Key para_TrackName para_Date
+				 , "originalFilePath": para_OldFileName }
+	; Do not use the trackname if the track matches it's own key (IE Australia), only use the Weekday name
+	if (thisTrack.group = para_TrackName) {
+		thistrack.name := Fn_GetWeekName(thistrack.date)
 	}
+				 
+	; WhatAdminConsoleWants example object
+	exampleObj := { "brand": ["tvg", "iowa"]
+				  , "date": 20200318
+				  , "filename": "Chantilly20200317.pdf"
+				  , "group": "France"
+				  , "international": 1
+				  , "name": "Chantilly, Tuesday" }
 
 	;See if the Track/Date is already present in the array. if yes, do not insert again
-	loop, % AllTracks_Array.MaxIndex() {
-		if (para_Date . para_TrackName = AllTracks_Array[A_Index,"Date"] . AllTracks_Array[A_Index,"TrackName"]) {
-			; msg(para_TrackName para_Date " already exists in the db, cannot be added")
-			return false
-		}
+	if (A.indexOf(AllTracks_Array, thisTrack) != -1) {
+		return false
 	}
 
-	AllTracks_ArraX += 1
-	if (!para_Date || !para_TrackName) {
-		return
-	}
-
-	AllTracks_Array[AllTracks_ArraX,"Key"] := para_Key
-	AllTracks_Array[AllTracks_ArraX,"TrackName"] := para_TrackName
-	AllTracks_Array[AllTracks_ArraX,"Date"] := para_Date
-	AllTracks_Array[AllTracks_ArraX,"DateTrack"] := para_Date . para_TrackName
-	AllTracks_Array[AllTracks_ArraX,"FileName"] := para_OldFileName
-	AllTracks_Array[AllTracks_ArraX,"FinalFilename"] := Fn_Filename(AllTracks_Array[AllTracks_ArraX,"TrackName"], para_Date)
-	AllTracks_Array[AllTracks_ArraX,"International"] := para_International
-	AllTracks_Array[AllTracks_ArraX,"brand"] := para_brand
-	if (AllTracks_Array[AllTracks_ArraX,"Date"] = "null") {
-		msg("FATAL ERROR WITH " AllTracks_Array[AllTracks_ArraX,"FinalFilename"] " - " para_DateTrack)
-		exitapp
-	}
-}
-
-
-Fn_Export(para_Key, para_URLLead)
-{
-	global
-
-	l_Today := A_YYYY A_MM A_DD
-	outputflag := false
-	
-	;Create HTML Title if any of that kind of track exist
-	l_count = 0
-	loop % AllTracks_Array.MaxIndex() {
-		l_FileTimeStamp := AllTracks_Array[A_Index,"Date"]
-		;Only add HTML title if [Key] Tracks are in the array AND are scheduled today or greater
-		if (para_key = AllTracks_Array[A_Index,"Key"] && l_FileTimeStamp >= l_Today) {
-			l_count += 1
-		}
-	}
-	if (l_count >= 1) {
-		Fn_InsertBlank(void)
-		Fn_InsertBlank(void)
-		Fn_InsertBlank(void)
-		Fn_HTMLTitle(para_Key)
-	} else {
-		return ;exit the function as there is nothing worth doing here
-	}
-
-	;Read each track in the array and write to HTML if it matches the current key (GB/IR, Australia, etc)
-	loop % AllTracks_Array.MaxIndex() {
-		if (para_key = AllTracks_Array[A_Index,"Key"])	{
-			l_Key := AllTracks_Array[A_Index,"Key"]
-			l_TrackName := AllTracks_Array[A_Index,"TrackName"]
-			l_DateTrack := AllTracks_Array[A_Index,"DateTrack"]
-			l_FinalFilename := AllTracks_Array[A_Index,"FinalFilename"]
-			
-			;Convert data out of l_DateTrack to get the weekdayname and new format of timestamp
-			l_WeekdayName := Fn_GetWeekName(l_DateTrack)
-			
-			;See if array item is new enough to be used in HTML
-			if (AllTracks_Array[A_Index,"Date"] < l_Today) {
-				;Skip to next item because this is older than today
-				continue
-			}
-			
-			l_TrackName := fn_ReplaceStrings("_", " ", l_TrackName)
-			l_Key := fn_ReplaceStrings("_", " ", l_Key)
-			;if the TrackName matches the Key, only output day in the HTML Name (This is for Australia/New Zealand/Japan)
-			if (l_TrackName = l_Key) {
-				l_CurrentLine = <a href="%Options_TVG3PrefixURL%%l_FinalFilename%" target="_blank">%l_WeekdayName% PPs</a><br />
-			} else {
-				l_CurrentLine = <a href="%Options_TVG3PrefixURL%%l_FinalFilename%" target="_blank">%l_TrackName%, %l_WeekdayName% PPs</a><br />
-			}
-			
-			;Check for UK-IRE/other country with many tracks and separate with <br> if new weekday is detected
-			if (l_count >= 7) {
-				if (outputflag != true) {
-					LastDate := l_WeekdayName
-				} else if (LastDate != l_WeekdayName) {
-					Fn_InsertText("<br />")
-					LastDate := l_WeekdayName
-				}
-			}
-			Fn_InsertText(l_CurrentLine)
-			outputflag := true
-		}
-	}
-	if ( AllTracks_ArraX >= 1) {
-		Fn_InsertText("<br />")
-	}
-}
-
-
-Fn_HTMLTitle(para_Text)
-{
-para_Text := fn_ReplaceStrings("-", "/", para_Text)
-para_Text := fn_ReplaceStrings("_", " ", para_Text)
-l_CurrentLine = <span style="color: #0c9256;"><strong>%para_Text%</strong></span><br />
-Fn_InsertText(l_CurrentLine)
-	if (InStr(para_Text, "GB"))	{
-		l_CurrentLine = <a href="http://www.timeform.com/free/" target="_blank">TIMEFORM</a><br />
-		Fn_InsertText(l_CurrentLine)
-	}
-}
-
-
-;This function just inserts a line of text
-Fn_InsertText(para_Text) 
-{
-	global
-	FileAppend, %para_Text%`n, % The_HMTLFile
-}
-
-
-;This function inserts a blank line. How worthless 
-Fn_InsertBlank(void)
-{
-	global
-	FileAppend, `n, % The_HMTLFile
+	; insert it into the array
+	AllTracks_Array.push(thisTrack)
 }
 
 
@@ -733,7 +595,7 @@ fn_Parsepdf(para_FilePath) {
 }
 
 
-Fn_Filename(para_trackname,para_date)
+Fn_Filename(para_trackname,para_date,para_key)
 {
 	global
 	if (!Settings.suffix) {
@@ -743,7 +605,7 @@ Fn_Filename(para_trackname,para_date)
 		Settings.prefix := ""
 	}
 	para_trackname := StrReplace(para_trackname," ","_")
-	return para_trackname . para_date . Options_suffix ".pdf"
+	return A.join(A.slice(para_key,1,3),"") "-" para_trackname . para_date . Options_suffix ".pdf"
 }
 
 Fn_DownloadtoFile(para_URL)
@@ -757,5 +619,35 @@ Fn_DownloadtoFile(para_URL)
 		return % Response
 	} else {
 		return false
+	}
+}
+
+
+
+
+
+
+
+
+
+
+clickmax := 32
+currentclick := 1
+numpad1::selectitem()
+numpad0::exitapp
+
+; -*-*-*-*-*-*-*-*-*-*-*-*
+; Functions
+; -*-*-*-*-*-*-*-*-*-*-*-*
+selectitem() {
+    global clickmax
+    global currentclick
+
+    loop, % currentclick {
+        MouseClick, left, 960, 610
+        sleep 1000
+    }
+	if (currentclick >= clickmax) {
+		currentclick := 1
 	}
 }
