@@ -1,7 +1,7 @@
 ;/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\
 ; Description
 ;\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/
-; Renames FreePPs pdf files; then generates html for use with the normal FreePPs process.
+; Renames FreePPs pdf files and generates metadata on each file
 
 ;~~~~~~~~~~~~~~~~~~~~~
 ;Compile Options
@@ -10,7 +10,7 @@ SetBatchLines -1 ;Go as fast as CPU will allow
 #NoTrayIcon
 #SingleInstance force
 The_ProjectName := "PPS2HTML"
-The_VersionNumb := "3.10.0"
+The_VersionNumb := "3.10.1"
 
 ;Dependencies
 #Include gui.ahk
@@ -27,7 +27,7 @@ The_VersionNumb := "3.10.0"
 ; npm
 #Include %A_ScriptDir%\node_modules
 #Include biga.ahk\export.ahk
-
+#Include logs.ahk\export.ahk
 
 ;/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\
 ; StartUp
@@ -36,15 +36,10 @@ The_VersionNumb := "3.10.0"
 ;;Startup special global variables
 A := new biga()
 GUI()
+
 ;; Make some special vars for config file date prediction
 Tomorrow := A_Now
 sb_IncrementDate()
-;Check for CommandLineArguments
-AUTOMODE := false
-if (A.includes(A_Args, "auto") || InStr(A_Args, "auto")) {
-	AUTOMODE := true
-}
-
 
 ;;Import and parse settings file
 FileRead, The_MemoryFile, % A_ScriptDir "\Data\settings.json"
@@ -54,11 +49,27 @@ if (!IsObject(AllTracks_Array)) {
 	AllTracks_Array := []
 }
 
+; Setup log file
+if (A.isUndefined(Settings.logfiledir)) {
+	Settings.logfiledir := "C:\TVG\LogFiles\"
+}
+log := new log_class(The_ProjectName "-" A_YYYY A_MM A_DD, Settings.logfiledir)
+log.add(The_ProjectName " launched from user " A_UserName " on the machine " A_ComputerName ". Version: v" The_VersionNumb)
+
+;Check for CommandLineArguments
+AUTOMODE := false
+if (A.includes(A_Args, "auto") || InStr(A_Args, "auto")) {
+	AUTOMODE := true
+	log.add("Automode enabled")
+}
+
 ;;Import Existing Track DB File
 FileRead, The_MemoryFile, % transformStringVarsGlobal(Settings.DBLocation)
 if (A.size(The_MemoryFile) > 10) {
+	log.add("Parsing " Settings.DBLocation)
 	AllTracks_Array := JSON.parse(The_MemoryFile)
 } else {
+	log.add("No existing DB found, creating new one in memory")
 	AllTracks_Array := []
 }
 
@@ -83,8 +94,7 @@ if (!Settings.parsing) {
 	ExitApp
 }
 ;; New folder processing
-for key, value in Settings.parsing
-{
+for key, value in Settings.parsing {
 	;convert string in settings file to a fully qualifed var + string for searching
 	searchdirstring := transformStringVarsGlobal(value.dir "\*.pdf")
 	if (value.recursive) {
@@ -112,7 +122,7 @@ for key, value in Settings.parsing
 			; if any "do" values or array
 			if (value.do) {
 				; delete any duplicate downloads
-				if (A.indexOf(value.do, "delete") != 0 || value.do = "delete") {
+				if (A.includes(value.do, "delete")) {
 					FileDelete, % A_LoopFileFullPath
 					continue
 				}
@@ -151,8 +161,8 @@ for key, value in Settings.parsing
 			if (value.pdftracknamepattern != "") {
 				text := fn_Parsepdf(A_LoopFileFullPath)
 				The_TrackName := fn_QuickRegEx(text, value.pdftracknamepattern)
-				if (!The_TrackName) {
-					msg("Couldn't find a trackname in '" A_LoopFileName "' with the RegEx '" value.pdftracknamepattern "'")
+				if (A.isUndefined(The_TrackName)) {
+					log.add(msg("Couldn't find a trackname in {" A_LoopFileName "} with the RegEx {" value.pdftracknamepattern "}"))
 				}
 			}
 			;; Pull trackname from ini lookup if specified
@@ -161,8 +171,12 @@ for key, value in Settings.parsing
 				var := transformStringVarsGlobal("%vKey%_%RegExResult%")
 				The_TrackName := %var%
 				; msgbox, % var "  /   " The_TrackName
-				if (A.isUndefined(The_TrackName && !Settings.showUnhandledFiles)) {
-					msg("Searched config.ini under '" value.configkeylookup "' key for '" RegExResult "' and found nothing. Update the file")
+				if (A.isUndefined(The_TrackName)) {
+					msgline := "Searched config.ini under '" value.configkeylookup "' key for '" RegExResult "' and found nothing. Update the file"
+					log.add(msgline)
+					if (Settings.showUnhandledFiles) {
+						msg(msgline)
+					}
 				}
 			}
 			
@@ -175,6 +189,7 @@ for key, value in Settings.parsing
 			}
 		}
 	}
+	log.add("Finished checking all parsers defined in config")
 }
 
 ;; Loop though all files once more and check for any unhandled files
@@ -192,7 +207,7 @@ for key, value in Settings.parsing
 		}
 	}
 }
-if (unhandledFiles.Length() > 0 && Settings.showUnhandledFiles) {
+if (unhandledFiles.Count() > 0 && Settings.showUnhandledFiles) {
 	msg("Nothing handling the following files:`n" A.join(A.map(unhandledFiles, A.trim), ", ") "`n`nUpdate .\Data\settings.json immediately and re-run. Renaming files by hand is NOT advised.")
 }
 
@@ -206,9 +221,12 @@ if (Settings.blacklist) {
 	; loop into each of the blacklist settings, user may have defined one or more
 	for key, value in Settings.blacklist {
 		; find objects that match the blacklisted properties
-		RemovableTracks := A.filter(AllTracks_Array, value) 
+		RemovableTracks := A.filter(AllTracks_Array, value)
 		; remove any matches from the larger array and re-assign
 		AllTracks_Array := A.difference(AllTracks_Array, RemovableTracks)
+		if (A.size(RemovableTracks) > 0) {
+			log.add("Blacklisted tracks found, removed")
+		}
 	}
 }
 
@@ -221,12 +239,11 @@ AllTracks_Array := A.sortBy(AllTracks_Array, ["trackname", "date", "group"])
 
 
 FormatTime, Today, , yyyyMMdd
+log.add("Refreshing GUI display list")
 LV_Delete()
 ; Array_Gui(AllTracks_Array)
 loop, % AllTracks_Array.Count() {
-	if (Today <= AllTracks_Array[A_Index,"date"]) {
-		LV_Add("",A_Index,AllTracks_Array[A_Index,"name"],AllTracks_Array[A_Index,"group"],AllTracks_Array[A_Index,"date"])
-	}
+	LV_Add("",A_Index,AllTracks_Array[A_Index,"name"],AllTracks_Array[A_Index,"group"],AllTracks_Array[A_Index,"date"])
 }
 LV_ModifyCol()
 
@@ -236,6 +253,7 @@ LV_ModifyCol()
 ;\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/
 FormatTime, Today, , yyyyMMdd
 FileDelete, % A_ScriptDir "\" Settings.AdminConsoleFileName
+log.add("Building " Settings.AdminConsoleFileName)
 Data_json := []
 loop, % AllTracks_Array.Count() {
 	;msgbox, % AllTracks_Array[A_Index,"Date"] " vs " Today
@@ -260,11 +278,13 @@ FileAppend, % JSON.stringify(A.uniq(Data_json)), % A_ScriptDir "\" Settings.Admi
 ;Array_Gui(AllTracks_Array)
 
 ;;Export Array as a JSON file
+log.add("Writing latest DB to " Settings.DBLocation)
 The_MemoryFile := JSON.stringify(AllTracks_Array)
 FileDelete, % Settings.DBLocation
 FileAppend, %The_MemoryFile%, % Settings.DBLocation
 
 if (AUTOMODE) {
+	log.add("Automatically jumping to pull files as Automode is enabled")
 	Sb_RenameFiles()
 }
 ;;ALL DONE
@@ -360,6 +380,7 @@ return
 ;\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/
 
 Menu_File-CustomTrack:
+	log.add(A_UserName " attempting to add custom track")
 	selectedfile := FileSelectFile("", A_ScriptDir, "Please select the file", "*pdf")
 
 	msgtext := "Please enter the track name"
@@ -400,6 +421,7 @@ Sb_RenameFiles()
 {
 	global
 
+	log.add("Pulling files and renaming...")
 	; Read each track in the array and perform file renaming
 	loop % AllTracks_Array.Count()
 	{
@@ -513,7 +535,7 @@ Fn_GetModifiedDate(para_String) ;Example Input: "20140730Scottsville"
 		l_NewDateFormat = %RE_TimeStamp2%%RE_TimeStamp3%%RE_TimeStamp1%
 		return l_NewDateFormat
 	} else {
-		msg("Couldn't understand the date format of " para_String ". Check for errors.")
+		log.add(msg("Couldn't understand the date format of {" para_String "} Check for errors."))
 	}
 }
 
@@ -556,6 +578,7 @@ Fn_InsertData(para_key, para_trackname, para_date, para_originalfilepath, para_b
 
 	; insert it into the array
 	AllTracks_Array.push(thisTrack)
+	log.add("Added track {" thisTrack.originalFilePath "} to memory")
 }
 
 
