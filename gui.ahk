@@ -66,6 +66,96 @@ exitapp
 }
 
 
+
+;/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\
+; Buttons
+;\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/
+AutoDownload:
+for key in Settings.downloads {
+	; msgbox, % A_Index . " " . Array_GUI(Settings.downloads[A_Index])
+	Page := Fn_DownloadtoFile(Settings.downloads[A_Index].site)
+	for index, line in StrSplit(Page,"`n") {
+		; if (fn_QuickRegEx(line,Settings.downloads[A_Index].regex).Count() != 0) {
+		; 	msg( fn_QuickRegEx(line,Settings.downloads[A_Index].regex).Count() )
+		; }
+	}
+	; Array_GUI(StrSplit(Page,"`n"))
+}
+exitapp
+return
+
+Parse:
+AUTOMODE := false
+Sb_ParseFiles()
+return
+
+Rename:
+Sb_RenameFiles()
+return
+
+;/--\--/--\--/--\
+; Edit Buttons
+;\--/--\--/--\--/
+EditDate:
+selected := LV_GetNext(1, Focused)
+if (selected > 0) { ;if a number
+	LV_GetText(INDEX, selected, 1) ;INDEX
+	LV_GetText(RowText, selected, 4) ;date
+	msgtext := "Please enter a new date in YYYYMMDD format"
+	InputBox, UserInput, %msgtext%, %msgtext%, , , , , , , ,%RowText%
+	AllTracks_Array[INDEX,"date"] := UserInput
+	Goto, Parse
+}
+return
+
+EditAssoc:
+selected := LV_GetNext(1, Focused)
+if (selected > 0) {
+	LV_GetText(INDEX, selected, 1) ;INDEX
+	LV_GetText(RowText, selected, 3) ;assoc
+	msgtext := "Please enter a new Association (Australia, UK_IRE, etc)"
+	InputBox, UserInput, %msgtext%, %msgtext%, , , , , , , ,%RowText%
+	AllTracks_Array[INDEX,"group"] := UserInput
+	Goto, Parse
+}
+return
+
+EditName:
+selected := LV_GetNext(1, Focused)
+if (selected > 0) {
+	LV_GetText(INDEX, selected, 1) ;INDEX
+	LV_GetText(RowText, selected, 2) ;TrackName
+	msgtext := "Please enter a new Trackname"
+	InputBox, UserInput, %msgtext%, %msgtext%, , , , , , , ,%RowText%
+	AllTracks_Array[INDEX,"name"] := UserInput
+	Goto, Parse
+}
+return
+
+Delete:
+selected := LV_GetNext(1, Focused)
+if (selected > 0) {
+	LV_GetText(INDEX, selected, 1) ;INDEX
+	msg("Deleting: " AllTracks_Array[INDEX,"DateTrack"])
+	AllTracks_Array[INDEX,"Date"] := 20010101 ;Will be automatically purged because of old date
+	Goto, Parse
+}
+return
+
+EditString:
+selected := LV_GetNext(1, Focused)
+if (selected > 0) {
+	LV_GetText(INDEX, selected, 1) ;INDEX
+	LV_GetText(RowText, selected, 2) ;TrackName
+	msgtext := "Please enter a new STRING"
+	InputBox, UserInput, %msgtext%, %msgtext%, , , , , , , ,%RowText%
+	AllTracks_Array[INDEX,"String"] := UserInput
+	Goto, Parse
+}
+return
+
+
+
 ;/--\--/--\--/--\--/--\--/--\
 ; Subroutines
 ;\--/--\--/--\--/--\--/--\--/
