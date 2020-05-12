@@ -10,7 +10,7 @@ SetBatchLines -1 ;Go as fast as CPU will allow
 #NoTrayIcon
 #SingleInstance force
 The_ProjectName := "PPS2HTML"
-The_VersionNumb := "3.10.1"
+The_VersionNumb := "3.10.2"
 
 ;Dependencies
 #Include gui.ahk
@@ -80,117 +80,8 @@ if (A.size(The_MemoryFile) > 10) {
 ; Consider downloading files here
 
 
-;; Loop all pdfs
-Parse:
-; reload ini track mappings
-Fn_InitializeIni(transformStringVarsGlobal(Settings.trackMappingConfig))
-Fn_LoadIni(transformStringVarsGlobal(Settings.trackMappingConfig))
-
-The_ListofDirs := transformStringVarsGlobal(Settings.dirs)
-The_ListofDirs.push(A_ScriptDir)
-
-if (!Settings.parsing) { 
-	msg("No parsers found in .\Data\settings.json file.`n`nThe application will quit")
-	ExitApp
-}
-;; New folder processing
-for key, value in Settings.parsing {
-	;convert string in settings file to a fully qualifed var + string for searching
-	searchdirstring := transformStringVarsGlobal(value.dir "\*.pdf")
-	if (value.recursive) {
-		value.recursive := " R"
-	}
-	loop, Files, %searchdirstring%, % value.recursive
-	{
-		sb_IncrementDate(A_Now)
-		The_TrackName := false
-		RegExResult := fn_QuickRegEx(A_LoopFileName, transformStringVarsGlobal(value.filepattern))
-		;loop 7 days ahead if user is trying to use a specific date and the file wasn't already found
-		if (value.weeksearch true && RegExResult = false) {
-			loop, 7 {
-				sb_IncrementDate()
-				RegExResult := fn_QuickRegEx(A_LoopFileName, transformStringVarsGlobal(value.filepattern))
-				if (RegExResult != false) {
-					break
-				}
-			}
-		}
-
-		; do for any regex pattern matches in settings file
-		if (RegExResult != false) {
-			
-			; if any "do" values or array
-			if (value.do) {
-				; delete any duplicate downloads
-				if (A.includes(value.do, "delete")) {
-					FileDelete, % A_LoopFileFullPath
-					continue
-				}
-			}
-			
-			; parse the filename for a date
-			dateSearchText := A_LoopFileName
-			if (value.prependdate != "") { ;append the date
-				dateSearchText := transformStringVarsGlobal(value.prependdate) A_LoopFileName
-			}
-			if (value.weeksearch = true) { ;parse using config specified datestring
-				dateSearchText := TOM_YYYY TOM_MM TOM_DD
-			}
-			The_Date := Fn_DateParser(dateSearchText)
-			The_Country := value.association
-			;; Pull Trackname from Regex if specified
-			if (value.tracknameinfile) {
-				The_TrackName := RegExResult
-			}
-
-			; change the date if specified
-			if (value.do = "incrementday") {
-				FormatTime, local_date, %The_Date%000000, yyyyMMddHHmmss
-				local_date += 1, Days
-				FormatTime, The_Date, %local_date%, yyyyMMdd
-			}
-			if (value.do = "decrementday") {
-				FormatTime, local_date, %The_Date%000000, yyyyMMddHHmmss
-				local_date += -1, Days
-				FormatTime, The_Date, %local_date%, yyyyMMdd
-				; msgbox, % "parsed date is " local_date "| decrementday is " The_Date
-			}
-			
-
-			;; Pull trackname from pdf text if specified
-			if (value.pdftracknamepattern != "") {
-				text := fn_Parsepdf(A_LoopFileFullPath)
-				The_TrackName := fn_QuickRegEx(text, value.pdftracknamepattern)
-				if (A.isUndefined(The_TrackName)) {
-					log.add(msg("Couldn't find a trackname in {" A_LoopFileName "} with the RegEx {" value.pdftracknamepattern "}"))
-				}
-			}
-			;; Pull trackname from ini lookup if specified
-			if (value.configkeylookup != "") {
-				vKey := A.trim(value.configkeylookup,"[]")
-				var := transformStringVarsGlobal("%vKey%_%RegExResult%")
-				The_TrackName := %var%
-				; msgbox, % var "  /   " The_TrackName
-				if (A.isUndefined(The_TrackName)) {
-					msgline := "Searched config.ini under '" value.configkeylookup "' key for '" RegExResult "' and found nothing. Update the file"
-					log.add(msgline)
-					if (Settings.showUnhandledFiles) {
-						msg(msgline)
-					}
-				}
-			}
-			
-			;; Insert data if a trackname and date was verified
-			if (The_TrackName && The_Date && The_Country) {
-				; msg("inserting: " The_TrackName "(" A_LoopFileName ")  with the assosiation: " The_Country)
-				Fn_InsertData(A.startCase(The_Country), Trim(The_TrackName), The_Date, A_LoopFileLongPath, value.brand, value.international, value.fileprefix)
-			} else {
-				; else is not handled in a seprate loop checking all files below
-			}
-		}
-	}
-	log.add("Finished checking all parsers defined in config")
-}
+;; Loop all pdfs and parse them
+Sb_ParseFiles()
 
 ;; Loop though all files once more and check for any unhandled files
 unhandledFiles := []
@@ -291,89 +182,6 @@ if (AUTOMODE) {
 return
 
 
-;/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\
-; Buttons
-;\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/
-AutoDownload:
-for key in Settings.downloads {
-	; msgbox, % A_Index . " " . Array_GUI(Settings.downloads[A_Index])
-	Page := Fn_DownloadtoFile(Settings.downloads[A_Index].site)
-	for index, line in StrSplit(Page,"`n") {
-		; if (fn_QuickRegEx(line,Settings.downloads[A_Index].regex).Count() != 0) {
-		; 	msg( fn_QuickRegEx(line,Settings.downloads[A_Index].regex).Count() )
-		; }
-	}
-	; Array_GUI(StrSplit(Page,"`n"))
-}
-exitapp
-return
-
-;/--\--/--\--/--\
-; Edit Buttons
-;\--/--\--/--\--/
-EditDate:
-selected := LV_GetNext(1, Focused)
-if (selected > 0) { ;if a number
-	LV_GetText(INDEX, selected, 1) ;INDEX
-	LV_GetText(RowText, selected, 4) ;date
-	msgtext := "Please enter a new date in YYYYMMDD format"
-	InputBox, UserInput, %msgtext%, %msgtext%, , , , , , , ,%RowText%
-	AllTracks_Array[INDEX,"date"] := UserInput
-	Goto, Parse
-}
-return
-
-EditAssoc:
-selected := LV_GetNext(1, Focused)
-if (selected > 0) {
-	LV_GetText(INDEX, selected, 1) ;INDEX
-	LV_GetText(RowText, selected, 3) ;assoc
-	msgtext := "Please enter a new Association (Australia, UK_IRE, etc)"
-	InputBox, UserInput, %msgtext%, %msgtext%, , , , , , , ,%RowText%
-	AllTracks_Array[INDEX,"group"] := UserInput
-	Goto, Parse
-}
-return
-
-EditName:
-selected := LV_GetNext(1, Focused)
-if (selected > 0) {
-	LV_GetText(INDEX, selected, 1) ;INDEX
-	LV_GetText(RowText, selected, 2) ;TrackName
-	msgtext := "Please enter a new Trackname"
-	InputBox, UserInput, %msgtext%, %msgtext%, , , , , , , ,%RowText%
-	AllTracks_Array[INDEX,"name"] := UserInput
-	Goto, Parse
-}
-return
-
-Delete:
-selected := LV_GetNext(1, Focused)
-if (selected > 0) {
-	LV_GetText(INDEX, selected, 1) ;INDEX
-	msg("Deleting: " AllTracks_Array[INDEX,"DateTrack"])
-	AllTracks_Array[INDEX,"Date"] := 20010101 ;Will be automatically purged because of old date
-	Goto, Parse
-}
-return
-
-EditString:
-selected := LV_GetNext(1, Focused)
-if (selected > 0) {
-	LV_GetText(INDEX, selected, 1) ;INDEX
-	LV_GetText(RowText, selected, 2) ;TrackName
-	msgtext := "Please enter a new STRING"
-	InputBox, UserInput, %msgtext%, %msgtext%, , , , , , , ,%RowText%
-	AllTracks_Array[INDEX,"String"] := UserInput
-	Goto, Parse
-}
-return
-
-;;Actually move and rename files now
-Rename:
-Sb_RenameFiles()
-return
-
 
 ;/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\
 ; Menu Options
@@ -416,6 +224,120 @@ return
 ;/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\
 ; Subroutines
 ;\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/
+
+Sb_ParseFiles()
+{
+	global
+	; reload ini track mappings
+	Fn_InitializeIni(transformStringVarsGlobal(Settings.trackMappingConfig))
+	Fn_LoadIni(transformStringVarsGlobal(Settings.trackMappingConfig))
+
+	The_ListofDirs := transformStringVarsGlobal(Settings.dirs)
+	The_ListofDirs.push(A_ScriptDir)
+
+	if (!Settings.parsing) { 
+		msg("No parsers found in .\Data\settings.json file.`n`nThe application will quit")
+		ExitApp
+	}
+	;; New folder processing
+	for key, value in Settings.parsing {
+		;convert string in settings file to a fully qualifed var + string for searching
+		searchdirstring := transformStringVarsGlobal(value.dir "\*.pdf")
+		if (value.recursive) {
+			value.recursive := " R"
+		}
+		loop, Files, %searchdirstring%, % value.recursive
+		{
+			sb_IncrementDate(A_Now)
+			The_TrackName := false
+			RegExResult := fn_QuickRegEx(A_LoopFileName, transformStringVarsGlobal(value.filepattern))
+			;loop 7 days ahead if user is trying to use a specific date and the file wasn't already found
+			if (value.weeksearch true && RegExResult = false) {
+				loop, 7 {
+					sb_IncrementDate()
+					RegExResult := fn_QuickRegEx(A_LoopFileName, transformStringVarsGlobal(value.filepattern))
+					if (RegExResult != false) {
+						break
+					}
+				}
+			}
+
+			; do for any regex pattern matches in settings file
+			if (RegExResult != false) {
+				
+				; if any "do" values or array
+				if (value.do) {
+					; delete any duplicate downloads
+					if (A.includes(value.do, "delete")) {
+						FileDelete, % A_LoopFileFullPath
+						continue
+					}
+				}
+				
+				; parse the filename for a date
+				dateSearchText := A_LoopFileName
+				if (value.prependdate != "") { ;append the date
+					dateSearchText := transformStringVarsGlobal(value.prependdate) A_LoopFileName
+				}
+				if (value.weeksearch = true) { ;parse using config specified datestring
+					dateSearchText := TOM_YYYY TOM_MM TOM_DD
+				}
+				The_Date := Fn_DateParser(dateSearchText)
+				The_Country := value.association
+				;; Pull Trackname from Regex if specified
+				if (value.tracknameinfile) {
+					The_TrackName := RegExResult
+				}
+
+				; change the date if specified
+				if (value.do = "incrementday") {
+					FormatTime, local_date, %The_Date%000000, yyyyMMddHHmmss
+					local_date += 1, Days
+					FormatTime, The_Date, %local_date%, yyyyMMdd
+				}
+				if (value.do = "decrementday") {
+					FormatTime, local_date, %The_Date%000000, yyyyMMddHHmmss
+					local_date += -1, Days
+					FormatTime, The_Date, %local_date%, yyyyMMdd
+					; msgbox, % "parsed date is " local_date "| decrementday is " The_Date
+				}
+				
+
+				;; Pull trackname from pdf text if specified
+				if (value.pdftracknamepattern != "") {
+					text := fn_Parsepdf(A_LoopFileFullPath)
+					The_TrackName := fn_QuickRegEx(text, value.pdftracknamepattern)
+					if (A.isUndefined(The_TrackName)) {
+						log.add(msg("Couldn't find a trackname in {" A_LoopFileName "} with the RegEx {" value.pdftracknamepattern "}"))
+					}
+				}
+				;; Pull trackname from ini lookup if specified
+				if (value.configkeylookup != "") {
+					vKey := A.trim(value.configkeylookup,"[]")
+					var := transformStringVarsGlobal("%vKey%_%RegExResult%")
+					The_TrackName := %var%
+					; msgbox, % var "  /   " The_TrackName
+					if (A.isUndefined(The_TrackName)) {
+						msgline := "Searched config.ini under '" value.configkeylookup "' key for '" RegExResult "' and found nothing. Update the file"
+						log.add(msgline)
+						if (Settings.showUnhandledFiles) {
+							msg(msgline)
+						}
+					}
+				}
+				
+				;; Insert data if a trackname and date was verified
+				if (The_TrackName && The_Date && The_Country) {
+					; msg("inserting: " The_TrackName "(" A_LoopFileName ")  with the assosiation: " The_Country)
+					Fn_InsertData(A.startCase(The_Country), Trim(The_TrackName), The_Date, A_LoopFileLongPath, value.brand, value.international, value.fileprefix)
+				} else {
+					; else is not handled in a seprate loop checking all files below
+				}
+			}
+		}
+		log.add("Finished checking all parsers defined in config")
+	}
+}
 
 Sb_RenameFiles()
 {
