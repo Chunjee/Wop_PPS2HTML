@@ -10,7 +10,7 @@ SetBatchLines -1 ;Go as fast as CPU will allow
 #NoTrayIcon
 #SingleInstance force
 The_ProjectName := "PPS2HTML"
-The_VersionNumb := "3.10.2"
+The_VersionNumb := "3.11.0"
 
 ;Dependencies
 #Include gui.ahk
@@ -39,7 +39,7 @@ GUI()
 
 ;; Make some special vars for config file date prediction
 Tomorrow := A_Now
-sb_IncrementDate()
+Sb_IncrementDate()
 
 ;;Import and parse settings file
 FileRead, The_MemoryFile, % A_ScriptDir "\Data\settings.json"
@@ -107,36 +107,16 @@ if (unhandledFiles.Count() > 0 && Settings.showUnhandledFiles) {
 ;/--\--/--\--/--\
 ; Remove blacklisted tracks
 ;\--/--\--/--\--/
-; if a blacklist is supplied in the settings file
-if (Settings.blacklist) {
-	; loop into each of the blacklist settings, user may have defined one or more
-	for key, value in Settings.blacklist {
-		; find objects that match the blacklisted properties
-		RemovableTracks := A.filter(AllTracks_Array, value)
-		; remove any matches from the larger array and re-assign
-		AllTracks_Array := A.difference(AllTracks_Array, RemovableTracks)
-		if (A.size(RemovableTracks) > 0) {
-			log.add("Blacklisted tracks found, removed")
-		}
-	}
-}
-
-;Kick Array items over 30 days old out
-AllTracks_Array := A.uniq(AllTracks_Array)
-AllTracks_Array := A.filter(AllTracks_Array, Func("helper_returnNewDates"))
-
-;Sort all Array Content by DateTrack ; No not do in descending order as this will flip the output. Sat,Fri,Thur
-AllTracks_Array := A.sortBy(AllTracks_Array, ["trackname", "date", "group"])
+Sb_RemoveBlackListedTracks()
 
 
-FormatTime, Today, , yyyyMMdd
-log.add("Refreshing GUI display list")
-LV_Delete()
-; Array_Gui(AllTracks_Array)
-loop, % AllTracks_Array.Count() {
-	LV_Add("",A_Index,AllTracks_Array[A_Index,"name"],AllTracks_Array[A_Index,"group"],AllTracks_Array[A_Index,"date"])
-}
-LV_ModifyCol()
+
+; kick tracks out that are old AND refresh GUI display
+Sb_RefreshAllTracksandGUI()
+
+
+
+
 
 
 ;/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\
@@ -202,9 +182,9 @@ Menu_File-CustomTrack:
 	msgtext := "Please enter the platforms for this track to appear on. Example: tvg,iowa,4njbets"
 	InputBox, u_platforms, %msgtext%, %msgtext%
 	l_platforms := StrSplit(u_platforms,",")
-	if (!l_platforms.Length()) {
-		msg("platforms not understood or erroneous. The application will restart")
-		Reload
+	if (A.size(l_platforms) = 0) {
+		msg("platforms not understood or erroneous. Please rety")
+		return
 	}
 	msgtext := "Enter 1 if this track is international, otherwise enter 0"
 	InputBox, u_international, %msgtext%, %msgtext%
@@ -228,6 +208,7 @@ return
 Sb_ParseFiles()
 {
 	global
+
 	; reload ini track mappings
 	Fn_InitializeIni(transformStringVarsGlobal(Settings.trackMappingConfig))
 	Fn_LoadIni(transformStringVarsGlobal(Settings.trackMappingConfig))
@@ -235,7 +216,7 @@ Sb_ParseFiles()
 	The_ListofDirs := transformStringVarsGlobal(Settings.dirs)
 	The_ListofDirs.push(A_ScriptDir)
 
-	if (!Settings.parsing) { 
+	if (A.isUndefined(Settings.parsing)) { 
 		msg("No parsers found in .\Data\settings.json file.`n`nThe application will quit")
 		ExitApp
 	}
@@ -248,13 +229,13 @@ Sb_ParseFiles()
 		}
 		loop, Files, %searchdirstring%, % value.recursive
 		{
-			sb_IncrementDate(A_Now)
+			Sb_IncrementDate(A_Now)
 			The_TrackName := false
 			RegExResult := fn_QuickRegEx(A_LoopFileName, transformStringVarsGlobal(value.filepattern))
 			;loop 7 days ahead if user is trying to use a specific date and the file wasn't already found
 			if (value.weeksearch true && RegExResult = false) {
 				loop, 7 {
-					sb_IncrementDate()
+					Sb_IncrementDate()
 					RegExResult := fn_QuickRegEx(A_LoopFileName, transformStringVarsGlobal(value.filepattern))
 					if (RegExResult != false) {
 						break
@@ -317,7 +298,7 @@ Sb_ParseFiles()
 					var := transformStringVarsGlobal("%vKey%_%RegExResult%")
 					The_TrackName := %var%
 					; msgbox, % var "  /   " The_TrackName
-					if (A.isUndefined(The_TrackName)) {
+					if (A.isUndefined(The_TrackName) && A.findIndex(AllTracks_Array, {"originalFilePath": A_LoopFileFullPath}) = -1) {
 						msgline := "Searched config.ini under '" value.configkeylookup "' key for '" RegExResult "' and found nothing. Update the file"
 						log.add(msgline)
 						if (Settings.showUnhandledFiles) {
@@ -338,6 +319,50 @@ Sb_ParseFiles()
 		log.add("Finished checking all parsers defined in config")
 	}
 }
+
+
+Sb_RefreshAllTracksandGUI()
+{
+	global
+
+	FormatTime, Today, , yyyyMMdd
+	;Kick Array items over 30 days old out
+	AllTracks_Array := A.uniq(AllTracks_Array)
+	AllTracks_Array := A.filter(AllTracks_Array, Func("helper_returnNewDates"))
+	;Sort all Array Content by DateTrack ; No not do in descending order as this will flip the output. Sat,Fri,Thur
+	AllTracks_Array := A.sortBy(AllTracks_Array, ["trackname", "date", "group"])
+
+
+	FormatTime, Today, , yyyyMMdd
+	log.add("Refreshing GUI display list")
+	LV_Delete()
+	; Array_Gui(AllTracks_Array)
+	loop, % AllTracks_Array.Count() {
+		LV_Add("",A_Index,AllTracks_Array[A_Index,"name"],AllTracks_Array[A_Index,"group"],AllTracks_Array[A_Index,"date"])
+	}
+	LV_ModifyCol()
+}
+
+
+Sb_RemoveBlackListedTracks()
+{
+	global
+
+	; if a blacklist is supplied in the settings file
+	if (Settings.blacklist) {
+		; loop into each of the blacklist settings, user may have defined one or more
+		for key, value in Settings.blacklist {
+			; find objects that match the blacklisted properties
+			RemovableTracks := A.filter(AllTracks_Array, value)
+			; remove any matches from the larger array and re-assign
+			AllTracks_Array := A.difference(AllTracks_Array, RemovableTracks)
+			if (A.size(RemovableTracks) > 0) {
+				log.add("Blacklisted tracks found, removed")
+			}
+		}
+	}
+}
+
 
 Sb_RenameFiles()
 {
@@ -375,30 +400,36 @@ Sb_RenameFiles()
 	}
 }
 
-;/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\
-; Functions
-;\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/
-
-
-helper_returnNewDates(param_track)
+;Create Directory and install needed file(s)
+Sb_InstallFiles()
 {
-	global A
+	global
 
-	YesterdaysDate := A_Now
-	YesterdaysDate += -1, d
-	YesterdaysDate := A.join(A.slice(YesterdaysDate, 1, 8), "")
-	if (!fn_DateValidate(param_track.date)) {
-		return false
-	}
-	;See if item is new enough to stay in the array
-	if (param_track.date > YesterdaysDate) {
-		return true
-	}
+	FileCreateDir, %A_ScriptDir%\Data\
+	FileCreateDir, %A_ScriptDir%\Data\Temp\
+	FileInstall, Data\PDFtoTEXT.exe, %A_ScriptDir%\Data\PDFtoTEXT.exe, 1
 }
 
+Sb_GlobalNameSpace()
+{
+	global
 
-;Increment the date used for 
-sb_IncrementDate(para_StartDate = "")
+	Path_PDFtoHTML = %A_ScriptDir%\Data\
+	AllTracks_Array := {Key:"", TrackName:"", DateTrack:"", FileName:""}
+	AllTracks_ArraX = 1
+	FirstGBLoop = 1
+	;pdf parsing paths
+	exepath := A_ScriptDir "\Data\PDFtoTEXT.exe"
+	txtpath := A_ScriptDir "\Data\TEMPPDFTEXT.txt"
+
+	tomorrow := a_now	
+	tomorrow += 1, days
+	formattime, tomorrowsyear, %tomorrow%, yyyy 
+	formattime, tomorrow_date, %tomorrow%, yyyyMMdd
+}
+
+;Increment the date used for date searching thing. feature which I guess needs global scope -_-"
+Sb_IncrementDate(para_StartDate := "")
 {
 	global
 
@@ -477,7 +508,7 @@ Fn_InsertData(para_key, para_trackname, para_date, para_originalfilepath, para_b
 				 , "name": para_trackname ", " Fn_GetWeekName(para_date)
 				 , "string": ""
 
-				 , "trackname": para_trackname
+				 , "trackname": fn_RestringExtenededAscii(para_trackname)
 				 , "identity": para_key para_trackname para_date
 				 , "originalFilePath": para_originalfilepath }
 	; Do not use the trackname if the track matches it's own key (IE Australia), only use the Weekday name
@@ -567,3 +598,145 @@ Fn_DownloadtoFile(para_URL)
 		return false
 	}
 }
+
+fn_RestringExtenededAscii(param_value:="",param_map1:="",param_map2:="")
+{
+	; determine what kind of map is being provided
+	; Object
+	if (IsObject(param_map1)) {
+		l_arr := StrSplit(param_value)
+		; for each characters
+		for l_key, l_char in l_arr {
+			; assign output depending on availability in map
+			if param_map1.HasKey(l_char) {
+				l_output .= param_map1[l_char]
+			} else {
+				l_output .= l_char
+			}
+		}
+		return l_output
+	}
+
+	; String
+	if (!IsObject(param_map1)) {
+		if (StrLen(param_map1) != StrLen(param_map2)) {
+			return param_value
+		}
+		if (param_map1 = "") {
+			param_map1 := "ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ"
+		}
+		if (param_map2 = "") {
+			param_map2 := "AAAAAAACEEEEIIIIDNOOOOOxOUUUUYPBaaaaaaaceeeeiiiionooooo%ouuuuypy"
+		}
+		l_array1 := StrSplit(param_map1)
+		l_array2 := StrSplit(param_map2)
+	}
+	l_dataArr := StrSplit(param_value)
+	l_output := ""
+
+	; for each character in value
+	for l_key, l_value in l_dataArr {
+		if (Asc(l_value) > 126) {
+			; scan the map array for matching character to change
+			for l_key2, l_value2 in l_array1 {
+				if (l_value = l_value2) {
+					; assign output to matching character
+					l_output .= l_array2[l_key2]
+					;no need to check the rest of the map
+					break
+				}
+			}
+		} else {
+			l_output .= l_value
+		}
+	}
+	return l_output
+}
+
+
+;/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\
+; Buttons
+;\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/
+AutoDownload:
+for key in Settings.downloads {
+	; msgbox, % A_Index . " " . Array_GUI(Settings.downloads[A_Index])
+	Page := Fn_DownloadtoFile(Settings.downloads[A_Index].site)
+	for index, line in StrSplit(Page,"`n") {
+		; if (fn_QuickRegEx(line,Settings.downloads[A_Index].regex).Count() != 0) {
+		; 	msg( fn_QuickRegEx(line,Settings.downloads[A_Index].regex).Count() )
+		; }
+	}
+	; Array_GUI(StrSplit(Page,"`n"))
+	return
+}
+
+Parse:
+AUTOMODE := false
+Sb_ParseFiles()
+return
+
+Rename:
+Sb_RenameFiles()
+return
+
+;/--\--/--\--/--\
+; Edit Buttons
+;\--/--\--/--\--/
+EditDate:
+selected := LV_GetNext(1, Focused)
+if (selected > 0) { ;if a number
+	LV_GetText(INDEX, selected, 1) ;INDEX
+	LV_GetText(RowText, selected, 4) ;date
+	msgtext := "Please enter a new date in YYYYMMDD format"
+	InputBox, UserInput, %msgtext%, %msgtext%, , , , , , , ,%RowText%
+	AllTracks_Array[INDEX,"date"] := UserInput
+	Sb_RefreshAllTracksandGUI()
+}
+return
+
+EditAssoc:
+selected := LV_GetNext(1, Focused)
+if (selected > 0) {
+	LV_GetText(INDEX, selected, 1) ;INDEX
+	LV_GetText(RowText, selected, 3) ;assoc
+	msgtext := "Please enter a new Association (Australia, UK_IRE, etc)"
+	InputBox, UserInput, %msgtext%, %msgtext%, , , , , , , ,%RowText%
+	AllTracks_Array[INDEX,"group"] := UserInput
+	Sb_RefreshAllTracksandGUI()
+}
+return
+
+EditName:
+selected := LV_GetNext(1, Focused)
+if (selected > 0) {
+	LV_GetText(INDEX, selected, 1) ;INDEX
+	LV_GetText(RowText, selected, 2) ;TrackName
+	msgtext := "Please enter a new Trackname"
+	InputBox, UserInput, %msgtext%, %msgtext%, , , , , , , ,%RowText%
+	AllTracks_Array[INDEX,"name"] := UserInput
+	AllTracks_Array[INDEX,"trackname"] := fn_RestringExtenededAscii(para_trackname)
+	Sb_RefreshAllTracksandGUI()
+}
+return
+
+Delete:
+selected := LV_GetNext(1, Focused)
+if (selected > 0) {
+	LV_GetText(INDEX, selected, 1) ;INDEX
+	msg("Deleting: " AllTracks_Array[INDEX,"DateTrack"])
+	AllTracks_Array[INDEX,"Date"] := 20010101 ;Will be automatically purged because of old date
+	Sb_RefreshAllTracksandGUI()
+}
+return
+
+EditString:
+selected := LV_GetNext(1, Focused)
+if (selected > 0) {
+	LV_GetText(INDEX, selected, 1) ;INDEX
+	LV_GetText(RowText, selected, 2) ;TrackName
+	msgtext := "Please enter a new STRING"
+	InputBox, UserInput, %msgtext%, %msgtext%, , , , , , , ,%RowText%
+	AllTracks_Array[INDEX,"String"] := UserInput
+	Sb_RefreshAllTracksandGUI()
+}
+return
