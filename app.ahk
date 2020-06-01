@@ -10,9 +10,9 @@ SetBatchLines -1 ;Go as fast as CPU will allow
 #NoTrayIcon
 #SingleInstance force
 The_ProjectName := "PPS2HTML"
-The_VersionNumb := "3.11.0"
+The_VersionNumb := "3.11.1"
 
-;Dependencies
+; Dependencies
 #Include gui.ahk
 #Include %A_ScriptDir%\lib
 #Include json.ahk\export.ahk
@@ -33,7 +33,7 @@ The_VersionNumb := "3.11.0"
 ; StartUp
 ;\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/
 
-;;Startup special global variables
+;; Startup special global variables
 A := new biga()
 GUI()
 
@@ -41,7 +41,7 @@ GUI()
 Tomorrow := A_Now
 Sb_IncrementDate()
 
-;;Import and parse settings file
+;; Import and parse settings file
 FileRead, The_MemoryFile, % A_ScriptDir "\Data\settings.json"
 Settings := JSON.parse(The_MemoryFile)
 The_MemoryFile := ;blank
@@ -49,22 +49,25 @@ if (!IsObject(AllTracks_Array)) {
 	AllTracks_Array := []
 }
 
-; Setup log file
+;; Setup log file
 if (A.isUndefined(Settings.logfiledir)) {
 	Settings.logfiledir := "C:\TVG\LogFiles\"
 }
 log := new log_class(The_ProjectName "-" A_YYYY A_MM A_DD, Settings.logfiledir)
 log.add(The_ProjectName " launched from user " A_UserName " on the machine " A_ComputerName ". Version: v" The_VersionNumb)
 
-;Check for CommandLineArguments
+;; Check for CommandLineArguments
 AUTOMODE := false
 if (A.includes(A_Args, "auto") || InStr(A_Args, "auto")) {
 	AUTOMODE := true
 	log.add("Automode enabled")
 }
 
-;;Import Existing Track DB File
-FileRead, The_MemoryFile, % transformStringVarsGlobal(Settings.DBLocation)
+
+Settings.DBLocation := transformStringVarsGlobal(Settings.DBLocation)
+Settings.trackMappingConfig := transformStringVarsGlobal(Settings.trackMappingConfig)
+;; Import Existing Track DB File
+FileRead, The_MemoryFile, % Settings.DBLocation
 if (A.size(The_MemoryFile) > 10) {
 	log.add("Parsing " Settings.DBLocation)
 	AllTracks_Array := JSON.parse(The_MemoryFile)
@@ -76,9 +79,6 @@ if (A.size(The_MemoryFile) > 10) {
 ;/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\
 ; MAIN
 ;\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/
-
-; Consider downloading files here
-
 
 ;; Loop all pdfs and parse them
 Sb_ParseFiles()
@@ -110,49 +110,19 @@ if (unhandledFiles.Count() > 0 && Settings.showUnhandledFiles) {
 Sb_RemoveBlackListedTracks()
 
 
-
 ; kick tracks out that are old AND refresh GUI display
 Sb_RefreshAllTracksandGUI()
 
 
-
-
-
-
-;/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\
+;/--\--/--\--/--\
 ; JSON Generation
-;\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/
-FormatTime, Today, , yyyyMMdd
-FileDelete, % A_ScriptDir "\" Settings.AdminConsoleFileName
-log.add("Building " Settings.AdminConsoleFileName)
-Data_json := []
-loop, % AllTracks_Array.Count() {
-	;msgbox, % AllTracks_Array[A_Index,"Date"] " vs " Today
-	if (AllTracks_Array[A_Index,"Date"] >= Today && !InStr(AllTracks_Array[A_Index,"DateTrack"],"null")) {
-		thistrack := {}
-		thistrack := AllTracks_Array[A_Index]		
-		;replace some yesteryear placeholder characters
-		thistrack.group := StrReplace(thistrack.group, "#" , "/")
-		thistrack.group := StrReplace(thistrack.group, "_" , " ")
-		;;Append the track to JSON output sorted as it was parsed
-		Data_json.push(thistrack)
-	}
-}
-
-if (A.isUndefined(Settings.AdminConsoleFileName)) {
-	Settings.AdminConsoleFileName := "data.json"
-}
-FileAppend, % JSON.stringify(A.uniq(Data_json)), % A_ScriptDir "\" Settings.AdminConsoleFileName
-
-
+;\--/--\--/--\--/
 ;For Debugging. Show contents of the Array 
 ;Array_Gui(AllTracks_Array)
+Sb_GenerateJSON()
 
 ;;Export Array as a JSON file
-log.add("Writing latest DB to " Settings.DBLocation)
-The_MemoryFile := JSON.stringify(AllTracks_Array)
-FileDelete, % Settings.DBLocation
-FileAppend, %The_MemoryFile%, % Settings.DBLocation
+Sb_GenerateDB()
 
 if (AUTOMODE) {
 	log.add("Automatically jumping to pull files as Automode is enabled")
@@ -229,6 +199,16 @@ Sb_ParseFiles()
 		}
 		loop, Files, %searchdirstring%, % value.recursive
 		{
+			; Skip this file if already present
+			existingObj := A.filter(AllTracks_Array, {"originalFilePath": A_LoopFileFullPath})
+			if (A.size(existingObj) > 1) {
+				continue
+			}
+			; skip files that return with old dates
+			if (fn_DatePresentFuture(fn_DateParser(A_LoopFileName)) == false) {
+				continue
+			}
+
 			Sb_IncrementDate(A_Now)
 			The_TrackName := false
 			RegExResult := fn_QuickRegEx(A_LoopFileName, transformStringVarsGlobal(value.filepattern))
@@ -254,7 +234,7 @@ Sb_ParseFiles()
 						continue
 					}
 				}
-				
+
 				; parse the filename for a date
 				dateSearchText := A_LoopFileName
 				if (value.prependdate != "") { ;append the date
@@ -286,10 +266,10 @@ Sb_ParseFiles()
 
 				;; Pull trackname from pdf text if specified
 				if (value.pdftracknamepattern != "") {
-					text := fn_Parsepdf(A_LoopFileFullPath)
-					The_TrackName := fn_QuickRegEx(text, value.pdftracknamepattern)
-					if (A.isUndefined(The_TrackName)) {
-						log.add(msg("Couldn't find a trackname in {" A_LoopFileName "} with the RegEx {" value.pdftracknamepattern "}"))
+					l_text := fn_Parsepdf(A_LoopFileFullPath)
+					The_TrackName := fn_QuickRegEx(l_text, value.pdftracknamepattern)
+					if (!A.isUndefined(The_TrackName)) {
+						log.add("Found the trackname: " The_TrackName " in {" A_LoopFileName "} with the RegEx {" value.pdftracknamepattern "}")
 					}
 				}
 				;; Pull trackname from ini lookup if specified
@@ -301,23 +281,24 @@ Sb_ParseFiles()
 					if (A.isUndefined(The_TrackName) && A.findIndex(AllTracks_Array, {"originalFilePath": A_LoopFileFullPath}) = -1) {
 						msgline := "Searched config.ini under '" value.configkeylookup "' key for '" RegExResult "' and found nothing. Update the file"
 						log.add(msgline)
-						if (Settings.showUnhandledFiles) {
+						if (Settings.showUnhandledFiles != false) {
 							msg(msgline)
 						}
 					}
 				}
 				
 				;; Insert data if a trackname and date was verified
+				; msgbox, % The_TrackName " " The_Date " " The_Country
 				if (The_TrackName && The_Date && The_Country) {
 					; msg("inserting: " The_TrackName "(" A_LoopFileName ")  with the assosiation: " The_Country)
-					Fn_InsertData(A.startCase(The_Country), Trim(The_TrackName), The_Date, A_LoopFileLongPath, value.brand, value.international, value.fileprefix)
+					Fn_InsertData(A.trim(The_Country), A.trim(The_TrackName), The_Date, A_LoopFileLongPath, value.brand, value.international, value.fileprefix)
 				} else {
 					; else is not handled in a seprate loop checking all files below
 				}
 			}
 		}
-		log.add("Finished checking all parsers defined in config")
 	}
+	log.add("Finished checking all parsers defined in config")
 }
 
 
@@ -331,7 +312,7 @@ Sb_RefreshAllTracksandGUI()
 	AllTracks_Array := A.filter(AllTracks_Array, Func("helper_returnNewDates"))
 	;Sort all Array Content by DateTrack ; No not do in descending order as this will flip the output. Sat,Fri,Thur
 	AllTracks_Array := A.sortBy(AllTracks_Array, ["trackname", "date", "group"])
-
+	Array_GUI(AllTracks_Array)
 
 	FormatTime, Today, , yyyyMMdd
 	log.add("Refreshing GUI display list")
@@ -363,6 +344,44 @@ Sb_RemoveBlackListedTracks()
 	}
 }
 
+Sb_GenerateJSON()
+{
+	global
+
+	FormatTime, Today, , yyyyMMdd
+	FileDelete, % A_ScriptDir "\" Settings.AdminConsoleFileName
+	log.add("Building " Settings.AdminConsoleFileName)
+	Data_json := []
+	loop, % AllTracks_Array.Count() {
+		;msgbox, % AllTracks_Array[A_Index,"Date"] " vs " Today
+		if (AllTracks_Array[A_Index,"Date"] >= Today && !InStr(AllTracks_Array[A_Index,"DateTrack"],"null")) {
+			thistrack := {}
+			thistrack := AllTracks_Array[A_Index]		
+			;replace some yesteryear placeholder characters
+			thistrack.group := StrReplace(thistrack.group, "#" , "/")
+			thistrack.group := StrReplace(thistrack.group, "_" , " ")
+			;;Append the track to JSON output sorted as it was parsed
+			Data_json.push(thistrack)
+		}
+	}
+	if (A.isUndefined(Settings.AdminConsoleFileName)) {
+		Settings.AdminConsoleFileName := "data.json"
+	}
+	FileAppend, % JSON.stringify(A.uniq(Data_json)), % A_ScriptDir "\" Settings.AdminConsoleFileName
+	msgbox, % A_ScriptDir "\" Settings.AdminConsoleFileName " written"
+}
+
+Sb_GenerateDB()
+{
+	global
+
+	log.add("Writing latest DB to " Settings.DBLocation)
+	The_MemoryFile := JSON.stringify(AllTracks_Array)
+	FileDelete, % Settings.DBLocation
+	sleep, 600
+	FileAppend, %The_MemoryFile%, % Settings.DBLocation
+	msgbox, % "written " Settings.DBLocation
+}
 
 Sb_RenameFiles()
 {
@@ -498,14 +517,13 @@ Fn_InsertData(para_key, para_trackname, para_date, para_originalfilepath, para_b
 {
 	global AllTracks_Array
 	global A
-
 	
 	thisTrack := { "brand": para_brand
 				 , "date": para_date
 				 , "filename": Fn_Filename(para_trackname, para_date, para_key, para_prefix)
 				 , "group": para_key
 				 , "international": para_international
-				 , "name": para_trackname ", " Fn_GetWeekName(para_date)
+				 , "name": fn_RestringExtenededAscii(para_trackname) ", " Fn_GetWeekName(para_date)
 				 , "string": ""
 
 				 , "trackname": fn_RestringExtenededAscii(para_trackname)
@@ -515,7 +533,7 @@ Fn_InsertData(para_key, para_trackname, para_date, para_originalfilepath, para_b
 	if (thisTrack.group = para_trackname) {
 		thistrack.name := Fn_GetWeekName(thistrack.date)
 	}
-				 
+
 	; WhatAdminConsoleWants example object
 	exampleObj := { "brand": ["tvg", "iowa"]
 				  , "date": 20200318
@@ -557,6 +575,34 @@ Fn_GuessAssociation(param_alltracks, param_trackname)
 ; Small functions
 ;\--/--\--/--\--/--\--/--\--/
 
+fn_DatePresentFuture(param_date) {
+    FormatTime, OutputVar, A_Now, yyyyMMdd
+    if (OutputVar <= param_date) { ; return true for dates that are equaltoo or greater than today
+        return true
+    }
+    if (OutputVar > param_date) {
+        return false
+    }
+    ; parameter was not understood
+    return -1
+}
+
+helper_returnNewDates(param_track)
+{
+	global A
+
+	YesterdaysDate := A_Now
+	YesterdaysDate += -1, d
+	YesterdaysDate := A.join(A.slice(YesterdaysDate, 1, 8), "")
+	if (!fn_DateValidate(param_track.date)) {
+		return false
+	}
+	;See if item is new enough to stay in the array
+	if (param_track.date > YesterdaysDate) {
+		return true
+	}
+}
+
 fn_Parsepdf(para_FilePath) {
 	exepath := A_ScriptDir "\Data\PDFtoTEXT.exe"
 	txtpath := A_ScriptDir "\Data\pdftext.txt"
@@ -568,14 +614,14 @@ fn_Parsepdf(para_FilePath) {
 	return File_PDFTEXT
 }
 
-
 Fn_Filename(para_trackname,para_date,para_key,para_prefix)
 {
 	global
-	if (!Settings.suffix) {
+
+	if (!Settings.filesuffix) {
 		Settings.suffix := ""
 	}
-	if (!Settings.prefix) {
+	if (!Settings.fileprefix) {
 		Settings.prefix := ""
 	}
 	para_trackname := StrReplace(para_trackname," ","_")
@@ -714,7 +760,7 @@ if (selected > 0) {
 	msgtext := "Please enter a new Trackname"
 	InputBox, UserInput, %msgtext%, %msgtext%, , , , , , , ,%RowText%
 	AllTracks_Array[INDEX,"name"] := UserInput
-	AllTracks_Array[INDEX,"trackname"] := fn_RestringExtenededAscii(para_trackname)
+	AllTracks_Array[INDEX,"trackname"] := UserInput
 	Sb_RefreshAllTracksandGUI()
 }
 return
