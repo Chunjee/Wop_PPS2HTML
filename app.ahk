@@ -10,24 +10,26 @@ SetBatchLines -1 ;Go as fast as CPU will allow
 #NoTrayIcon
 #SingleInstance force
 The_ProjectName := "PPS2HTML"
-The_VersionNumb := "3.13.2"
+The_VersionNumb := "4.0.0"
+
+; GUI
+#Include html-gui.ahk
 
 ; Dependencies
-#Include gui.ahk
-#Include %A_ScriptDir%\lib
-#Include json.ahk\export.ahk
-#Include util-misc.ahk\export.ahk
-#Include sort-array.ahk\export.ahk
-#Include wrappers.ahk\export.ahk
-#Include transformStringVars.ahk\export.ahk
-#Include util-array.ahk\export.ahk
-#Include dateparser.ahk\export.ahk
+#Include %A_ScriptDir%\legacy_functions
+#Include util-misc.ahk
 #Include inireadwrite.ahk
+; #Include util-array.ahk\export.ahk
+#Include dateparser.ahk
 
 ; npm
 #Include %A_ScriptDir%\node_modules
 #Include biga.ahk\export.ahk
+#Include array.ahk\export.ahk
+#Include json.ahk\export.ahk
 #Include logs.ahk\export.ahk
+; #Include wrappers.ahk\export.ahk
+#Include transformStringVars.ahk\export.ahk
 
 ;/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\
 ; StartUp
@@ -65,9 +67,9 @@ if (A.includes(A_Args, "cleardir")) {
 }
 
 
-Settings.DBLocation := transformStringVarsGlobal(Settings.DBLocation)
-Settings.trackMappingConfig := transformStringVarsGlobal(Settings.trackMappingConfig)
-Settings.exportDir := transformStringVarsGlobal(Settings.exportDir)
+Settings.DBLocation := transformStringVars(Settings.DBLocation)
+Settings.trackMappingConfig := transformStringVars(Settings.trackMappingConfig)
+Settings.exportDir := transformStringVars(Settings.exportDir)
 FileCreateDir(Settings.exportDir)
 ;; Import Existing Track DB File
 FileRead, The_MemoryFile, % Settings.DBLocation
@@ -101,7 +103,7 @@ Sb_ParseFiles()
 unhandledFiles := []
 for key, value in Settings.parsing
 {
-	searchdirstring := transformStringVarsGlobal(value.dir "\*.pdf")
+	searchdirstring := transformStringVars(value.dir "\*.pdf")
 	if (value.recursive) {
 		value.recursive := " R"
 	}
@@ -113,7 +115,7 @@ for key, value in Settings.parsing
 	}
 }
 if (unhandledFiles.Count() > 0 && Settings.showUnhandledFiles) {
-	msg("Nothing handling the following files:`n" A.join(A.uniq(A.map(unhandledFiles, A.trim)), ", ") "`n`nUpdate .\Data\settings.json immediately and re-run. Renaming files by hand is NOT advised.")
+	msg("Nothing handling the following files:`n" A.join(A.uniq(A.map(unhandledFiles, A.trim)), ", ") "`n`nUpdate .\data\settings.json immediately and re-run. Renaming files by hand is NOT advised.")
 }
 
 
@@ -201,7 +203,9 @@ return
 Sb_ReadSettings() {
 	global
 
-	FileRead, The_MemoryFile, % A_ScriptDir "\Data\settings.json"
+	settings_loc := A_ScriptDir "\data\settings.json"
+	FileRead, The_MemoryFile, % settings_loc
+	msgbox, % settings_loc
 	l_settings := JSON.parse(The_MemoryFile)
 	The_MemoryFile := ;blank
 	return l_settings
@@ -215,23 +219,23 @@ Sb_ParseFiles()
 	errorStorage := []
 
 	; reload ini track mappings
-	Fn_InitializeIni(transformStringVarsGlobal(Settings.trackMappingConfig))
-	Fn_LoadIni(transformStringVarsGlobal(Settings.trackMappingConfig))
+	Fn_InitializeIni(transformStringVars(Settings.trackMappingConfig))
+	Fn_LoadIni(transformStringVars(Settings.trackMappingConfig))
 
-	The_ListofDirs := transformStringVarsGlobal(Settings.dirs)
+	The_ListofDirs := transformStringVars(Settings.dirs)
 	The_ListofDirs.push(A_ScriptDir)
 
 	if (A.isUndefined(Settings.parsing)) { 
-		log.add(msg("No parsers found in .\Data\settings.json file.`n`nThe application will quit"))
+		log.add(msg("No parsers found in " settings_loc " file.`n`nThe application will quit"))
 		ExitApp
 	}
 	;; New folder processing
 	for key, value in Settings.parsing {
 		; update GUI
-		fn_guiUpdateProgressBar("The_ProgressIndicatorBar", key / Settings.parsing.Count())
+		; fn_guiUpdateProgressBar("The_ProgressIndicatorBar", key / Settings.parsing.Count())
 
 		;convert string in settings file to a fully qualifed var + string for searching
-		searchdirstring := transformStringVarsGlobal(value.dir "\*.pdf")
+		searchdirstring := transformStringVars(value.dir "\*.pdf")
 		if (value.recursive) {
 			value.recursive := " R"
 		}
@@ -253,13 +257,13 @@ Sb_ParseFiles()
 
 			Sb_IncrementDate(A_Now)
 			The_TrackName := false
-			RegExResult := fn_QuickRegEx(A_LoopFileName, transformStringVarsGlobal(value.filepattern))
+			RegExResult := fn_QuickRegEx(A_LoopFileName, transformStringVars(value.filepattern))
 			;loop 7 days ahead if user is trying to use a specific date and the file wasn't already found
 			if (value.weeksearch true && RegExResult = false) {
 				log.add("Searching for a nearby date for " A_LoopFileName)
 				loop, 7 {
 					Sb_IncrementDate()
-					RegExResult := fn_QuickRegEx(A_LoopFileName, transformStringVarsGlobal(value.filepattern))
+					RegExResult := fn_QuickRegEx(A_LoopFileName, transformStringVars(value.filepattern))
 					if (RegExResult != false) {
 						break
 					}
@@ -281,7 +285,7 @@ Sb_ParseFiles()
 				; parse the filename for a date
 				dateSearchText := A_LoopFileName
 				if (value.prependdate != "") { ;append the date
-					dateSearchText := transformStringVarsGlobal(value.prependdate) A_LoopFileName
+					dateSearchText := transformStringVars(value.prependdate) A_LoopFileName
 				}
 				if (value.weeksearch = true) { ;parse using config specified datestring
 					dateSearchText := TOM_YYYY TOM_MM TOM_DD
@@ -311,7 +315,7 @@ Sb_ParseFiles()
 				if (value.configkeylookup != "") {
 					vKey := A.trim(value.configkeylookup,"[]")
 					trackCode := A.replace(RegExResult, "[\W*]", "")
-					var := transformStringVarsGlobal("%vKey%_%trackCode%")
+					var := transformStringVars("%vKey%_%trackCode%")
 					The_TrackName := %var%
 				}
 				;; Pull trackname from pdf text if specified
@@ -341,7 +345,7 @@ Sb_ParseFiles()
 			}
 		}
 	}
-	fn_guiUpdateProgressBar("The_ProgressIndicatorBar", 0)
+	; fn_guiUpdateProgressBar("The_ProgressIndicatorBar", 0)
 
 	loop, % errorStorage.Count() {
 		if (A.isUndefined(The_TrackName) && A.size(A.filter(AllTracks_Array, {"originalFilePath": A_LoopFileFullPath})) == 0) {
@@ -435,7 +439,7 @@ Sb_GenerateJSON()
 	}
 	; declutter metadata
 	data_json := A.map(data_json, Func("hfn_decluttermetadata"))
-	FileAppend, % JSON.stringify(A.uniq(data_json)), % transformStringVarsGlobal(Settings.exportDir "\" Settings.AdminConsoleFileName)
+	FileAppend, % JSON.stringify(A.uniq(data_json)), % transformStringVars(Settings.exportDir "\" Settings.AdminConsoleFileName)
 }
 
 Sb_GenerateDB()
@@ -457,7 +461,7 @@ Sb_RenameFiles()
 	; Read each track in the array and perform file renaming
 	loop % AllTracks_Array.Count()
 	{
-		fn_guiUpdateProgressBar("The_ProgressIndicatorBar", A_Index / AllTracks_Array.Count())
+		; fn_guiUpdateProgressBar("The_ProgressIndicatorBar", A_Index / AllTracks_Array.Count())
 		thisTrack := AllTracks_Array[A_Index]
 
 		; skip this item if the original file is gone (doesn't need to be renamed because it doesn't exist)
@@ -465,7 +469,7 @@ Sb_RenameFiles()
 			continue
 		}
 		; skip if there is no export dir in settings
-		exportDir := transformStringVarsGlobal(Settings.exportDir)
+		exportDir := transformStringVars(Settings.exportDir)
 		if (A.isUndefined(exportDir)) {
 			exportPath := A_ScriptDir "\" thisTrack.filename
 		} else {
@@ -484,7 +488,7 @@ Sb_RenameFiles()
 			}
 		}
 	}
-	fn_guiUpdateProgressBar("The_ProgressIndicatorBar", 0)
+	; fn_guiUpdateProgressBar("The_ProgressIndicatorBar", 0)
 }
 
 ;Create Directory and install needed file(s)
@@ -492,9 +496,9 @@ Sb_InstallFiles()
 {
 	global
 
-	FileCreateDir, %A_ScriptDir%\Data\
-	FileCreateDir, %A_ScriptDir%\Data\Temp\
-	FileInstall, Data\PDFtoTEXT.exe, %A_ScriptDir%\Data\PDFtoTEXT.exe, 1
+	FileCreateDir, %A_ScriptDir%\data\
+	FileCreateDir, %A_ScriptDir%\data\Temp\
+	FileInstall, data\PDFtoTEXT.exe, %A_ScriptDir%\data\PDFtoTEXT.exe, 1
 }
 
 Sb_GlobalNameSpace()
@@ -505,8 +509,8 @@ Sb_GlobalNameSpace()
 	AllTracks_ArraX = 1
 	FirstGBLoop = 1
 	;pdf parsing paths
-	exepath := A_ScriptDir "\Data\PDFtoTEXT.exe"
-	txtpath := A_ScriptDir "\Data\TEMPPDFTEXT.txt"
+	exepath := A_ScriptDir "\data\PDFtoTEXT.exe"
+	txtpath := A_ScriptDir "\data\TEMPPDFTEXT.txt"
 
 	tomorrow := a_now	
 	tomorrow += 1, days
@@ -679,8 +683,8 @@ helper_returnNewDates(param_track)
 }
 
 fn_Parsepdf(para_FilePath) {
-	exepath := A_ScriptDir "\Data\PDFtoTEXT.exe"
-	txtpath := A_ScriptDir "\Data\pdftext.txt"
+	exepath := A_ScriptDir "\data\PDFtoTEXT.exe"
+	txtpath := A_ScriptDir "\data\pdftext.txt"
 	RunWait, "%exepath%" "%para_FilePath%" "%txtpath%",, Hide
 	Sleep, 250
 	;;Read the Trackname out of the converted text
@@ -783,20 +787,11 @@ hfn_decluttermetadata(obj) {
 	return biga.pick(obj, ["name", "brand", "date", "filename", "group", "international"])
 }
 
+
+
 ;/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\
 ; Buttons
 ;\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/
-AutoDownload:
-for key in Settings.downloads {
-	Page := fn_DownloadtoFile(Settings.downloads[A_Index].site)
-	for index, line in StrSplit(Page,"`n") {
-		; if (fn_QuickRegEx(line,Settings.downloads[A_Index].regex).Count() != 0) {
-		; 	msg( fn_QuickRegEx(line,Settings.downloads[A_Index].regex).Count() )
-		; }
-	}
-	; Array_GUI(StrSplit(Page,"`n"))
-	return
-}
 
 Parse:
 AUTOMODE := false
@@ -818,7 +813,7 @@ if (selected > 0) { ;if a number
 	msgtext := "Please enter a new date in YYYYMMDD format"
 	InputBox, UserInput, %msgtext%, %msgtext%, , , , , , , ,%RowText%
 	AllTracks_Array[INDEX,"date"] := UserInput
-	Sb_RefreshAllTracksandGUI()
+	Goto, Parse
 }
 return
 
@@ -830,7 +825,7 @@ if (selected > 0) {
 	msgtext := "Please enter a new Association (Australia, UK_IRE, etc)"
 	InputBox, UserInput, %msgtext%, %msgtext%, , , , , , , ,%RowText%
 	AllTracks_Array[INDEX,"group"] := UserInput
-	Sb_RefreshAllTracksandGUI()
+	Goto, Parse
 }
 return
 
@@ -842,8 +837,7 @@ if (selected > 0) {
 	msgtext := "Please enter a new Trackname"
 	InputBox, UserInput, %msgtext%, %msgtext%, , , , , , , ,%RowText%
 	AllTracks_Array[INDEX,"name"] := UserInput
-	AllTracks_Array[INDEX,"trackname"] := UserInput
-	Sb_RefreshAllTracksandGUI()
+	Goto, Parse
 }
 return
 
@@ -851,9 +845,9 @@ Delete:
 selected := LV_GetNext(1, Focused)
 if (selected > 0) {
 	LV_GetText(INDEX, selected, 1) ;INDEX
-	msg("Deleting: " AllTracks_Array[INDEX,"identity"])
-	AllTracks_Array[INDEX,"date"] := 20010101 ;Will be automatically purged because of old date
-	Sb_RefreshAllTracksandGUI()
+	msg("Deleting: " AllTracks_Array[INDEX,"DateTrack"])
+	AllTracks_Array[INDEX,"Date"] := 20010101 ;Will be automatically purged because of old date
+	Goto, Parse
 }
 return
 
@@ -864,7 +858,14 @@ if (selected > 0) {
 	LV_GetText(RowText, selected, 2) ;TrackName
 	msgtext := "Please enter a new STRING"
 	InputBox, UserInput, %msgtext%, %msgtext%, , , , , , , ,%RowText%
-	AllTracks_Array[INDEX,"string"] := UserInput
-	Sb_RefreshAllTracksandGUI()
+	AllTracks_Array[INDEX,"String"] := UserInput
+	Goto, Parse
 }
 return
+
+
+
+;/--\--/--\--/--\--/--\--/--\
+; GUI Subroutines
+;\--/--\--/--\--/--\--/--\--/
+

@@ -157,31 +157,5 @@ return
 
 
 ;/--\--/--\--/--\--/--\--/--\
-; Subroutines
+; GUI Subroutines
 ;\--/--\--/--\--/--\--/--\--/
-
-;Create Directory and install needed file(s)
-Sb_InstallFiles()
-{
-	FileCreateDir, %A_ScriptDir%\Data\
-	FileCreateDir, %A_ScriptDir%\Data\Temp\
-	FileInstall, Data\PDFtoTEXT.exe, %A_ScriptDir%\Data\PDFtoTEXT.exe, 1
-}
-
-Sb_GlobalNameSpace()
-{
-	global
-
-	Path_PDFtoHTML = %A_ScriptDir%\Data\
-	AllTracks_Array := {Key:"", TrackName:"", DateTrack:"", FileName:""}
-	AllTracks_ArraX = 1
-	FirstGBLoop = 1
-	;pdf parsing paths
-	exepath := A_ScriptDir "\Data\PDFtoTEXT.exe"
-	txtpath := A_ScriptDir "\Data\TEMPPDFTEXT.txt"
-
-	tomorrow := a_now	
-	tomorrow += 1, days
-	formattime, tomorrowsyear, %tomorrow%, yyyy 
-	formattime, tomorrow_date, %tomorrow%, yyyyMMdd
-}
