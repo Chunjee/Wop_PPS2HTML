@@ -225,8 +225,8 @@ sb_ParseFiles()
 	errorStorage := []
 
 	; reload ini track mappings
-	Fn_InitializeIni(transformStringVars(Settings.trackMappingConfig))
-	Fn_LoadIni(transformStringVars(Settings.trackMappingConfig))
+	fn_InitializeIni(transformStringVars(Settings.trackMappingConfig))
+	fn_LoadIni(transformStringVars(Settings.trackMappingConfig))
 
 	if (A.isUndefined(Settings.parsing)) { 
 		log.add(msg("No parsers found in " settings_loc " file.`n`nThe application will quit"))
@@ -560,7 +560,7 @@ fn_GetWeekName(para_String) ;Example Input: "20140730"
 }
 
 
-Fn_JustGetDate(para_String)
+fn_JustGetDate(para_String)
 {
 	RegExMatch(para_String, "(\d{4})(\d{2})(\d{2})", RE_TimeStamp)
 	if (RE_TimeStamp1 != "") {
@@ -572,7 +572,7 @@ return error
 
 
 ;Changes a correct Timestamp 20140730 to a bad one! 071314
-Fn_GetModifiedDate(para_String) ;Example Input: "20140730Scottsville"
+fn_GetModifiedDate(para_String) ;Example Input: "20140730Scottsville"
 {
 	RegExMatch(para_String, "(\d{4})(\d{2})(\d{2})", RE_TimeStamp)
 	if (RE_TimeStamp1 != "") {
