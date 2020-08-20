@@ -42,10 +42,10 @@ createGUI()
 
 ;; Make some special vars for config file date prediction
 Tomorrow := A_Now
-Sb_IncrementDate()
+sb_IncrementDate()
 
 ;; Import and parse settings file
-Settings := Sb_ReadSettings()
+Settings := sb_ReadSettings()
 
 if (!IsObject(AllTracks_Array)) {
 	AllTracks_Array := []
@@ -90,7 +90,7 @@ if (A.size(The_MemoryFile) > 10) {
 ; MAIN
 ;\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/
 ;; Loop all pdfs and parse them
-Sb_ParseFiles()
+sb_ParseFiles()
 
 ; more ideal main loop
 ; for key, value in Settings.parsing {
@@ -124,24 +124,24 @@ if (unhandledFiles.Count() > 0 && Settings.showUnhandledFiles) {
 ;/--\--/--\--/--\
 ; Remove blacklisted tracks
 ;\--/--\--/--\--/
-Sb_RemoveBlackListedTracks(AllTracks_Array, Settings.blacklist)
+sb_RemoveBlackListedTracks(AllTracks_Array, Settings.blacklist)
 
 
 ; kick tracks out that are old AND refresh GUI display
-Sb_RefreshAllTracksandGUI()
+sb_RefreshAllTracksandGUI()
 
 
 ;/--\--/--\--/--\
 ; JSON Generation
 ;\--/--\--/--\--/
-Sb_GenerateJSON()
+sb_GenerateJSON()
 
 ;;Export DB as a JSON file
-Sb_GenerateDB()
+sb_GenerateDB()
 
 if (AUTOMODE) {
 	log.add("Automatically jumping to pull files as Automode is enabled")
-	Sb_RenameFiles()
+	sb_RenameFiles()
 }
 
 ;;ALL DONE
@@ -190,7 +190,7 @@ Menu_File-CustomTrack:
 	}
 
 	fn_InsertData(u_association, u_trackname, u_date, selectedfile, l_platforms, l_international, "sp")
-	Sb_RefreshAllTracksandGUI()
+	sb_RefreshAllTracksandGUI()
 return
 
 Menu_File-DeletePDFs:
@@ -204,7 +204,7 @@ return
 ; Subroutines
 ;\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/
 
-Sb_ReadSettings() {
+sb_ReadSettings() {
 	global
 
 	settings_loc := A_ScriptDir "\data\settings.json"
@@ -215,12 +215,12 @@ Sb_ReadSettings() {
 }
 
 
-Sb_ParseFiles()
+sb_ParseFiles()
 {
 	global
 
 	; reload all settings
-	Settings := Sb_ReadSettings()
+	Settings := sb_ReadSettings()
 
 	errorStorage := []
 
@@ -258,13 +258,13 @@ Sb_ParseFiles()
 				continue
 			}
 
-			Sb_IncrementDate(A_Now)
+			sb_IncrementDate(A_Now)
 			The_TrackName := false
 			RegExResult := fn_QuickRegEx(A_LoopFileName, transformStringVars(value.filepattern))
 			;loop 7 days ahead if user is trying to use a specific date and the file wasn't already found
 			if (value.weeksearch true && RegExResult = false) {
 				loop, 7 {
-					Sb_IncrementDate()
+					sb_IncrementDate()
 					RegExResult := fn_QuickRegEx(A_LoopFileName, transformStringVars(value.filepattern))
 					if (RegExResult != false) {
 						break
@@ -365,7 +365,7 @@ Sb_ParseFiles()
 }
 
 
-Sb_RefreshAllTracksandGUI()
+sb_RefreshAllTracksandGUI()
 {
 	global
 
@@ -373,7 +373,7 @@ Sb_RefreshAllTracksandGUI()
 	;Kick Array items over 30 days old out
 	AllTracks_Array := A.filter(AllTracks_Array, Func("helper_returnNewDates"))
 	;Kick out duplicates 
-	AllTracks_Array := fn_KickOutDuplicatesCustom(AllTracks_Array)
+	AllTracks_Array := sb_KickOutDuplicatesCustom(AllTracks_Array)
 	;Sort all Array Content by DateTrack ; No not do in descending order as this will flip the output. Sat,Fri,Thur
 	AllTracks_Array := A.sortBy(AllTracks_Array, ["trackname", "date", "group"])
 
@@ -382,10 +382,10 @@ Sb_RefreshAllTracksandGUI()
 	LV_Delete()
 
 	html := fn_generateTable(AllTracks_Array, ["trackname", "date", "group", "originalFilePath"])
-	neutron.qs("#v-pills-tabContent").outerHTML := html
+	neutron.qs("#mainOutput").innerHTML := html
 }
 
-fn_KickOutDuplicatesCustom(param_alltracksArray) {
+sb_KickOutDuplicatesCustom(param_alltracksArray) {
 	global A
 
 	newarray := []
@@ -401,7 +401,7 @@ fn_KickOutDuplicatesCustom(param_alltracksArray) {
 }
 
 
-Sb_RemoveBlackListedTracks(param_Alltracks, param_blacklist:="")
+sb_RemoveBlackListedTracks(param_Alltracks, param_blacklist:="")
 {
 	global A
 
@@ -421,7 +421,7 @@ Sb_RemoveBlackListedTracks(param_Alltracks, param_blacklist:="")
 	return param_Alltracks
 }
 
-Sb_GenerateJSON()
+sb_GenerateJSON()
 {
 	global
 
@@ -443,7 +443,7 @@ Sb_GenerateJSON()
 	FileAppend, % JSON.stringify(A.uniq(data_json)), % transformStringVars(Settings.exportDir "\" Settings.AdminConsoleFileName)
 }
 
-Sb_GenerateDB()
+sb_GenerateDB()
 {
 	global
 
@@ -454,7 +454,7 @@ Sb_GenerateDB()
 	FileAppend, %The_MemoryFile%, % Settings.DBLocation
 }
 
-Sb_RenameFiles()
+sb_RenameFiles()
 {
 	global
 
@@ -493,7 +493,7 @@ Sb_RenameFiles()
 }
 
 ;Create Directory and install needed file(s)
-Sb_InstallFiles()
+sb_InstallFiles()
 {
 	global
 
@@ -502,7 +502,7 @@ Sb_InstallFiles()
 	FileInstall, data\PDFtoTEXT.exe, %A_ScriptDir%\data\PDFtoTEXT.exe, 1
 }
 
-Sb_GlobalNameSpace()
+sb_GlobalNameSpace()
 {
 	global
 
@@ -520,7 +520,7 @@ Sb_GlobalNameSpace()
 }
 
 ;Increment the date used for date searching thing. feature which I guess needs global scope -_-"
-Sb_IncrementDate(para_StartDate := "")
+sb_IncrementDate(para_StartDate := "")
 {
 	global
 
@@ -796,11 +796,11 @@ hfn_decluttermetadata(obj) {
 
 Parse:
 AUTOMODE := false
-Sb_ParseFiles()
+sb_ParseFiles()
 return
 
 Rename:
-Sb_RenameFiles()
+sb_RenameFiles()
 return
 
 ;/--\--/--\--/--\
