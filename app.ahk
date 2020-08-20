@@ -27,8 +27,9 @@ The_VersionNumb := "4.0.0"
 #Include biga.ahk\export.ahk
 #Include array.ahk\export.ahk
 #Include json.ahk\export.ahk
+#Include neutron.ahk\export.ahk
 #Include logs.ahk\export.ahk
-; #Include wrappers.ahk\export.ahk
+#Include wrappers.ahk\export.ahk
 #Include transformStringVars.ahk\export.ahk
 
 ;/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\
@@ -37,7 +38,7 @@ The_VersionNumb := "4.0.0"
 
 ;; Startup special global variables
 A := new biga()
-GUI()
+createGUI()
 
 ;; Make some special vars for config file date prediction
 Tomorrow := A_Now
@@ -45,6 +46,7 @@ Sb_IncrementDate()
 
 ;; Import and parse settings file
 Settings := Sb_ReadSettings()
+
 if (!IsObject(AllTracks_Array)) {
 	AllTracks_Array := []
 }
@@ -54,6 +56,7 @@ if (A.isUndefined(Settings.logfiledir)) {
 	Settings.logfiledir := "C:\TVG\LogFiles\"
 }
 log := new log_class(The_ProjectName "-" A_YYYY A_MM A_DD, Settings.logfiledir)
+log.set_applicationname(The_ProjectName)
 log.add(The_ProjectName " launched from user " A_UserName " on the machine " A_ComputerName ". Version: v" The_VersionNumb)
 
 ;; Check for CommandLineArguments
@@ -86,13 +89,11 @@ if (A.size(The_MemoryFile) > 10) {
 ;/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\
 ; MAIN
 ;\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/
-
 ;; Loop all pdfs and parse them
 Sb_ParseFiles()
 
 ; more ideal main loop
-; for key, value in Settings.parsing
-; {
+; for key, value in Settings.parsing {
 ; 	; input is parser and array of filepaths, output is tracks <--
 
 ; 	; input is parser, output is array of files?
@@ -148,6 +149,9 @@ if (AUTOMODE == true) {
 	ExitApp
 }
 return
+;/--\--/--\--/--\
+; MAIN END
+;\--/--\--/--\--/
 
 
 
@@ -205,7 +209,6 @@ Sb_ReadSettings() {
 
 	settings_loc := A_ScriptDir "\data\settings.json"
 	FileRead, The_MemoryFile, % settings_loc
-	msgbox, % settings_loc
 	l_settings := JSON.parse(The_MemoryFile)
 	The_MemoryFile := ;blank
 	return l_settings
@@ -216,14 +219,14 @@ Sb_ParseFiles()
 {
 	global
 
+	; reload all settings
+	Settings := Sb_ReadSettings()
+
 	errorStorage := []
 
 	; reload ini track mappings
 	Fn_InitializeIni(transformStringVars(Settings.trackMappingConfig))
 	Fn_LoadIni(transformStringVars(Settings.trackMappingConfig))
-
-	The_ListofDirs := transformStringVars(Settings.dirs)
-	The_ListofDirs.push(A_ScriptDir)
 
 	if (A.isUndefined(Settings.parsing)) { 
 		log.add(msg("No parsers found in " settings_loc " file.`n`nThe application will quit"))
@@ -260,7 +263,6 @@ Sb_ParseFiles()
 			RegExResult := fn_QuickRegEx(A_LoopFileName, transformStringVars(value.filepattern))
 			;loop 7 days ahead if user is trying to use a specific date and the file wasn't already found
 			if (value.weeksearch true && RegExResult = false) {
-				log.add("Searching for a nearby date for " A_LoopFileName)
 				loop, 7 {
 					Sb_IncrementDate()
 					RegExResult := fn_QuickRegEx(A_LoopFileName, transformStringVars(value.filepattern))
@@ -367,7 +369,7 @@ Sb_RefreshAllTracksandGUI()
 {
 	global
 
-	FormatTime, Today, , yyyyMMdd
+	Today := FormatTime(A_Now, "yyyyMMdd")
 	;Kick Array items over 30 days old out
 	AllTracks_Array := A.filter(AllTracks_Array, Func("helper_returnNewDates"))
 	;Kick out duplicates 
@@ -375,13 +377,12 @@ Sb_RefreshAllTracksandGUI()
 	;Sort all Array Content by DateTrack ; No not do in descending order as this will flip the output. Sat,Fri,Thur
 	AllTracks_Array := A.sortBy(AllTracks_Array, ["trackname", "date", "group"])
 
-	FormatTime, Today, , yyyyMMdd
+	Today := FormatTime(A_Now, "yyyyMMdd")
 	log.add("Refreshing GUI display list")
 	LV_Delete()
-	loop, % AllTracks_Array.Count() {
-		LV_Add("",A_Index,AllTracks_Array[A_Index,"name"],AllTracks_Array[A_Index,"group"],AllTracks_Array[A_Index,"date"])
-	}
-	LV_ModifyCol()
+
+	html := fn_generateTable(AllTracks_Array, ["trackname", "date", "group", "originalFilePath"])
+	neutron.qs("#v-pills-tabContent").outerHTML := html
 }
 
 fn_KickOutDuplicatesCustom(param_alltracksArray) {

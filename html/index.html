@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+
+	<link href="bootstrap.min.css" rel="stylesheet">
+	<script src="jquery.min.js"></script>
+	<script src="bootstrap.min.js"></script>
+
+	<style>
+		html,
+		body {
+			width: 100%;
+			height: 100%;
+		}
+
+		.title-btn {
+			padding: 0.35em 1.0em;
+			cursor: pointer;
+			vertical-align: bottom;
+			font-family: Webdings;
+			font-size: 11pt;
+		}
+
+		.title-btn:hover {
+			background: rgba(0, 0, 0, .2);
+		}
+
+		.title-btn-close:hover {
+			background: #dc3545;
+		}
+	</style>
+</head>
+
+<body class="d-flex flex-column">
+
+	<!-- Title Bar -->
+	<header>
+		<div class="d-flex align-items-stretch bg-dark text-white">
+			<span id="the_projectname" class="flex-grow-1 px-2 py-1" onmousedown="neutron.DragTitleBar()">PPS2HTML</span>
+			<span class="flex-grow-1 px-2 py-1" onclick="ahk.DragTitleBar()">PPS2HTML</span>
+			<span class="title-btn" onclick="neutron.Minimize()">0</span>
+			<span class="title-btn" onclick="neutron.Maximize()">1</span>
+			<span class="title-btn title-btn-close" onclick="neutron.Close()">r</span>
+		</div>
+	</header>
+	<!-- End Title Bar -->
+
+	<!-- Window Contents -->
+	<div class="flex-grow-1 d-flex">
+
+		<!-- Sidebar -->
+		<div class="nav flex-column nav-pills bg-dark text-light" id="v-pills-tab" role="tablist"
+			aria-orientation="vertical">
+			<a class="nav-link text-light active" id="v-pills-home-tab" data-toggle="pill" href="#v-pills-home" role="tab"
+				aria-controls="v-pills-home" aria-selected="true">Home</a>
+			<a class="nav-link text-light" id="v-pills-log-tab" data-toggle="pill" href="#v-pills-log" role="tab"
+				aria-controls="v-pills-log" aria-selected="false">Logs</a>
+			<a class="nav-link text-light" id="v-pills-paths-tab" data-toggle="pill" href="#v-pills-paths" role="tab"
+				aria-controls="v-pills-paths" aria-selected="false">Paths</a>
+			<a class="nav-link text-light" id="v-pills-settings-tab" data-toggle="pill" href="#v-pills-settings" role="tab"
+				aria-controls="v-pills-settings" aria-selected="false">Settings</a>
+		</div>
+		<!-- End Sidebar -->
+
+		<!-- Page Content -->
+		<div class="flex-grow-1 overflow-auto">
+			<div class="tab-content container p-2" id="v-pills-tabContent">
+
+				<!-- v-pills-home -->
+				<div class="tab-pane fade show active" id="v-pills-home" role="tabpanel" aria-labelledby="v-pills-home-tab">
+					<!-- <h1>Welcome to Neutron</h1> -->
+					<div id="mainOutput"></div>
+					
+				</div>
+				<!-- End v-pills-home -->
+
+				<!-- v-pills-log -->
+				<div class="tab-pane fade" id="v-pills-log" role="tabpanel" aria-labelledby="v-pills-log-tab">
+					<p id="logoutput">log!</p>
+					<ul>
+						<li>hello</li>
+					</ul>
+
+					<table class="table">
+						<!-- replaced with logic -->
+					</table>
+
+					<h2>Colored log:</h2>
+					<button type="button" onclick="ahk.Button(event)" class="btn btn-primary">Primary</button>
+					<button type="button" onclick="ahk.Button(event)" class="btn btn-secondary">Secondary</button>
+					<button type="button" onclick="ahk.Button(event)" class="btn btn-success">Success</button>
+					<button type="button" onclick="ahk.Button(event)" class="btn btn-danger">Danger</button>
+					<button type="button" onclick="ahk.Button(event)" class="btn btn-warning">Warning</button>
+					<button type="button" onclick="ahk.Button(event)" class="btn btn-info">Info</button>
+					<button type="button" onclick="ahk.Button(event)" class="btn btn-light">Light</button>
+					<button type="button" onclick="ahk.Button(event)" class="btn btn-dark">Dark</button>
+					<button type="button" onclick="ahk.Button(event)" class="btn btn-link">Link</button>
+
+					<h2>Outline log:</h2>
+					<button type="button" onclick="ahk.Button(event)" class="btn btn-outline-primary">Primary</button>
+					<button type="button" onclick="ahk.Button(event)" class="btn btn-outline-secondary">Secondary</button>
+					<button type="button" onclick="ahk.Button(event)" class="btn btn-outline-success">Success</button>
+					<button type="button" onclick="ahk.Button(event)" class="btn btn-outline-danger">Danger</button>
+					<button type="button" onclick="ahk.Button(event)" class="btn btn-outline-warning">Warning</button>
+					<button type="button" onclick="ahk.Button(event)" class="btn btn-outline-info">Info</button>
+					<button type="button" onclick="ahk.Button(event)" class="btn btn-outline-light">Light</button>
+					<button type="button" onclick="ahk.Button(event)" class="btn btn-outline-dark">Dark</button>
+					<button type="button" onclick="ahk.Button(event)" class="btn btn-outline-link">Link</button>
+
+					<h2>Block log:</h2>
+					<button type="button" onclick="ahk.Button(event)" class="btn btn-block btn-primary">Block level
+						button</button>
+					<button type="button" onclick="ahk.Button(event)" class="btn btn-block btn-outline-primary">Block level
+						button</button>
+
+				</div>
+				<!-- End v-pills-log -->
+
+				<!-- v-pills-paths -->
+				<div class="tab-pane fade" id="v-pills-paths" role="tabpanel" aria-labelledby="v-pills-paths-tab">
+					<h1>Paths</h1>
+					<br>
+					<table class="table" id="allPaths"></table>
+				</div>
+				<!-- End v-pills-paths -->
+
+				<!-- v-pills-settings -->
+				<div class="tab-pane fade" id="v-pills-settings" role="tabpanel" aria-labelledby="v-pills-settings-tab">
+					Settings
+				</div>
+				<!-- End v-pills-settings -->
+
+			</div>
+		</div>
+		<!-- End Page Contents -->
+
+	</div>
+	<!-- End Window Contents -->
+
+</body>
+
+</html>
