@@ -1,25 +1,24 @@
 {
-    "name": "wop_pps2html.ahk",
-    "version": "3.4.0",
-    "description": "Renames FreePPs pdf files; then generates html for use with the normal FreePPs process.",
-    "main": "app.ahk",
-    "scripts": {
-        "newinstall": "yarn install --modules-folder ./lib"
-    },
-    "repository": {
-        "type": "git",
-        "url": "https://github.com/Chunjee/Wop_PPS2HTML"
-    },
-    "dependencies": {
-        "json.ahk": "chunjee/json.ahk",
-        "sort-array.ahk": "chunjee/sort-array.ahk",
-        "util-misc.ahk": "gist:cf6c862be8fa18c546d2fd67d86f84aa",
-        "transformStringVars.ahk": "chunjee/transformStringVars.ahk",
-        "wrappers.ahk": "chunjee/wrappers.ahk"
-    },
-    "devdependencies": {
-        "unit-testing.ahk": "github:chunjee/unit-testing.ahk"
-    },
-    "author": "Shawn Brooker",
-    "license": "MIT"
+	"name": "wop_pps2html.ahk",
+	"version": "4.0.0",
+	"description": "Renames FreePPs pdf files; then generates html for use with the normal FreePPs process.",
+	"main": "app.ahk",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/Chunjee/Wop_PPS2HTML"
+	},
+	"dependencies": {
+		"array.ahk": "^0.1.8",
+		"biga.ahk": "^0.33.0",
+		"json.ahk": "chunjee/json.ahk",
+		"sort-array.ahk": "chunjee/sort-array.ahk",
+		"transformStringVars.ahk": "chunjee/transformStringVars.ahk",
+		"wrappers.ahk": "chunjee/wrappers.ahk",
+		"logs.ahk": "chunjee/logs.ahk"
+	},
+	"devDependencies": {
+		"unit-testing.ahk": "github:chunjee/unit-testing.ahk"
+	},
+	"author": "Shawn Brooker",
+	"license": "MIT"
 }
