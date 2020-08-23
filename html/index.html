@@ -65,54 +65,34 @@
 
 		<!-- Page Content -->
 		<div class="flex-grow-1 overflow-auto">
-			<div class="tab-content container p-2" id="v-pills-tabContent">
+			<div class="tab-content container p-2 col-lg" id="v-pills-tabContent">
 
 				<!-- v-pills-home -->
 				<div class="tab-pane fade show active" id="v-pills-home" role="tabpanel" aria-labelledby="v-pills-home-tab">
 					<!-- <h1>Welcome to Neutron</h1> -->
+					<button type="button" class="btn btn-lg btn-primary" onclick="ahk.sb_ParseFiles()">Parse Input Dirs</button>
+					<button type="button" class="btn btn-lg btn-primary" disabled>Rename Files</button>
+					<button type="button" class="btn btn-lg btn-primary" disabled>Parse</button>
+					<br>
 					<div id="mainOutput"></div>
 					
 				</div>
 				<!-- End v-pills-home -->
 
 				<!-- v-pills-log -->
-				<div class="tab-pane fade" id="v-pills-log" role="tabpanel" aria-labelledby="v-pills-log-tab">
-					<p id="logoutput">log!</p>
-					<ul>
-						<li>hello</li>
-					</ul>
+				<div class="tab-pane" id="v-pills-log" role="tabpanel" aria-labelledby="v-pills-log-tab">
+					<h1>Logs</h1>
+					<button type="button" onclick="ahk.Button(event)" class="btn btn-block btn-dark">Open log file</button>
+					<p id="logsOutputp"></p>
+					<div style="max-height: 600px;">
+						<ul id="logsOutput">
+							<!-- li added by ahk code -->
+						</ul>
+					</div>
 
 					<table class="table">
 						<!-- replaced with logic -->
 					</table>
-
-					<h2>Colored log:</h2>
-					<button type="button" onclick="ahk.Button(event)" class="btn btn-primary">Primary</button>
-					<button type="button" onclick="ahk.Button(event)" class="btn btn-secondary">Secondary</button>
-					<button type="button" onclick="ahk.Button(event)" class="btn btn-success">Success</button>
-					<button type="button" onclick="ahk.Button(event)" class="btn btn-danger">Danger</button>
-					<button type="button" onclick="ahk.Button(event)" class="btn btn-warning">Warning</button>
-					<button type="button" onclick="ahk.Button(event)" class="btn btn-info">Info</button>
-					<button type="button" onclick="ahk.Button(event)" class="btn btn-light">Light</button>
-					<button type="button" onclick="ahk.Button(event)" class="btn btn-dark">Dark</button>
-					<button type="button" onclick="ahk.Button(event)" class="btn btn-link">Link</button>
-
-					<h2>Outline log:</h2>
-					<button type="button" onclick="ahk.Button(event)" class="btn btn-outline-primary">Primary</button>
-					<button type="button" onclick="ahk.Button(event)" class="btn btn-outline-secondary">Secondary</button>
-					<button type="button" onclick="ahk.Button(event)" class="btn btn-outline-success">Success</button>
-					<button type="button" onclick="ahk.Button(event)" class="btn btn-outline-danger">Danger</button>
-					<button type="button" onclick="ahk.Button(event)" class="btn btn-outline-warning">Warning</button>
-					<button type="button" onclick="ahk.Button(event)" class="btn btn-outline-info">Info</button>
-					<button type="button" onclick="ahk.Button(event)" class="btn btn-outline-light">Light</button>
-					<button type="button" onclick="ahk.Button(event)" class="btn btn-outline-dark">Dark</button>
-					<button type="button" onclick="ahk.Button(event)" class="btn btn-outline-link">Link</button>
-
-					<h2>Block log:</h2>
-					<button type="button" onclick="ahk.Button(event)" class="btn btn-block btn-primary">Block level
-						button</button>
-					<button type="button" onclick="ahk.Button(event)" class="btn btn-block btn-outline-primary">Block level
-						button</button>
 
 				</div>
 				<!-- End v-pills-log -->
@@ -121,7 +101,7 @@
 				<div class="tab-pane fade" id="v-pills-paths" role="tabpanel" aria-labelledby="v-pills-paths-tab">
 					<h1>Paths</h1>
 					<br>
-					<table class="table" id="allPaths"></table>
+					<table class="table" id="pathsOutput"></table>
 				</div>
 				<!-- End v-pills-paths -->
 
@@ -139,5 +119,8 @@
 	<!-- End Window Contents -->
 
 </body>
+<footer>
+	<div id="footerContent"></div>
+</footer>
 
 </html>

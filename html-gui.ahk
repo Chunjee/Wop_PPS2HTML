@@ -1,13 +1,14 @@
 ;/--\--/--\--/--\--/--\--/--\
 ; GUI
 ;\--/--\--/--\--/--\--/--\--/
-createGUI()
+gui_Create()
 {
 	global
 	
 	neutron := new NeutronWindow()
 	neutron.load("html\index.html")
-	neutron.Show("w1080 h1000")
+	neutron.Show("w2080 h1000")
+	neutron.Maximize()
 
 	return
 	;Menu Shortcuts
@@ -16,7 +17,7 @@ createGUI()
 	return
 
 	Menu_About:
-	Msgbox, Renames Free PP files and generated HTML from all files run through the system. `nv%The_VersionNumb%
+	msgbox, % "Renames Free PP files and generated HTML from all files run through the system. `nv" The_VersionNumb
 	return
 
 	Menu_Vars:
@@ -34,7 +35,7 @@ createGUI()
 }
 
 
-fn_generateTable(param_data, param_columns:="")
+gui_generateTable(param_data, param_columns:="", param_style:="table-bordered table-striped")
 {
 	static nw := NeutronWindow
 	
@@ -50,7 +51,7 @@ fn_generateTable(param_data, param_columns:="")
 		}
 	}
 	
-	out := "<table class=""table""><thead>"
+	out := "<table class=""table " param_style " ""><thead class=""thead-light"">"
 	for _, title in param_columns
 		out .= nw.FormatHTML("<td>{}</td>", title)
 	out .= "</thead>"
@@ -66,4 +67,13 @@ fn_generateTable(param_data, param_columns:="")
 	out .= "</tbody></table>"
 	
 	return out
+}
+
+gui_genProgress(param_fill, param_style:="")
+{
+	progressPercent := param_fill * 100
+	if (progressPercent >= 100) {
+		return "<div></div>"
+	}
+	return "<div class=""progress""><div class=""progress-bar progress-bar-striped progress-bar-animated"" " param_style "role=""progressbar"" style=""width: " progressPercent "%"" aria-valuemin=""0"" aria-valuemax=""100""></div></div>"
 }

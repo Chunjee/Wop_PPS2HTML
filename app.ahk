@@ -38,7 +38,7 @@ The_VersionNumb := "4.0.0"
 
 ;; Startup special global variables
 A := new biga()
-createGUI()
+gui_Create()
 
 ;; Make some special vars for config file date prediction
 Tomorrow := A_Now
@@ -57,13 +57,13 @@ if (A.isUndefined(Settings.logfiledir)) {
 }
 log := new log_class(The_ProjectName "-" A_YYYY A_MM A_DD, Settings.logfiledir)
 log.set_applicationname(The_ProjectName)
-log.add(The_ProjectName " launched from user " A_UserName " on the machine " A_ComputerName ". Version: v" The_VersionNumb)
+logMsgAndGui(The_ProjectName " launched from user " A_UserName " on the machine " A_ComputerName ". Version: v" The_VersionNumb)
 
 ;; Check for CommandLineArguments
 AUTOMODE := false
 if (A.includes(A_Args, "auto") || InStr(A_Args, "auto")) {
 	AUTOMODE := true
-	log.add("Automode enabled")
+	logMsgAndGui("Automode enabled")
 }
 if (A.includes(A_Args, "cleardir")) {
 	Gosub, Menu_File-DeletePDFs
@@ -77,10 +77,10 @@ FileCreateDir(Settings.exportDir)
 ;; Import Existing Track DB File
 FileRead, The_MemoryFile, % Settings.DBLocation
 if (A.size(The_MemoryFile) > 10) {
-	log.add("Parsing " Settings.DBLocation)
+	logMsgAndGui("Parsing " Settings.DBLocation)
 	AllTracks_Array := JSON.parse(The_MemoryFile)
 } else {
-	log.add("No existing DB found, creating new one in memory")
+	logMsgAndGui("No existing DB found, creating new one in memory")
 	AllTracks_Array := []
 }
 ; msgbox, % A.print(A.filter(AllTracks_Array, {"originalFilePath": "\\10.209.2.60\Incoming\trackdata\200701_79_Epp.pdf"}))
@@ -140,7 +140,7 @@ sb_GenerateJSON()
 sb_GenerateDB()
 
 if (AUTOMODE) {
-	log.add("Automatically jumping to pull files as Automode is enabled")
+	logMsgAndGui("Automatically jumping to pull files as Automode is enabled")
 	sb_RenameFiles()
 }
 
@@ -160,7 +160,7 @@ return
 ;\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/
 
 Menu_File-CustomTrack:
-	log.add(A_UserName " attempting to add custom track")
+	logMsgAndGui(A_UserName " attempting to add custom track")
 	selectedfile := FileSelectFile("", A_ScriptDir, "Please select the file", "*pdf")
 
 	msgtext := "Please enter the track name"
@@ -211,11 +211,22 @@ sb_ReadSettings() {
 	FileRead, The_MemoryFile, % settings_loc
 	l_settings := JSON.parse(The_MemoryFile)
 	The_MemoryFile := ;blank
+	
+
+	; update gui with all paths
+	pathsAndAssoc := []
+	for _, obj in l_settings.parsing {
+		pathsAndAssoc.push(A.pick(obj, ["name", "association", "dir"]))
+	}
+	pathsAndAssoc := A.uniq(pathsAndAssoc)
+	html := gui_generateTable(pathsAndAssoc, ["name", "association", "dir"])
+	neutron.qs("#pathsOutput").innerHTML := html
+
 	return l_settings
 }
 
 
-sb_ParseFiles()
+sb_ParseFiles(param_neutron:="")
 {
 	global
 
@@ -229,12 +240,18 @@ sb_ParseFiles()
 	fn_LoadIni(transformStringVars(Settings.trackMappingConfig))
 
 	if (A.isUndefined(Settings.parsing)) { 
-		log.add(msg("No parsers found in " settings_loc " file.`n`nThe application will quit"))
+		logMsgAndGui(msg("No parsers found in " settings_loc " file.`n`nThe application will quit"))
 		ExitApp
 	}
+	; clear Gui
+	html := gui_generateTable([], ["trackname", "date", "group", "originalFilePath"])
+	neutron.qs("#mainOutput").innerHTML := html
+
 	;; New folder processing
 	for key, value in Settings.parsing {
 		; update GUI
+		html := gui_genProgress(A_Index / Settings.parsing.Count())
+		neutron.qs("#footerContent").innerHTML := html
 		; fn_guiUpdateProgressBar("The_ProgressIndicatorBar", key / Settings.parsing.Count())
 
 		;convert string in settings file to a fully qualifed var + string for searching
@@ -242,7 +259,7 @@ sb_ParseFiles()
 		if (value.recursive) {
 			value.recursive := " R"
 		}
-		log.add("Looking in " searchdirstring " for files")
+		logMsgAndGui("Looking in " searchdirstring " for files")
 		loop, Files, %searchdirstring%, % value.recursive
 		{
 			; skip files that return with old dates
@@ -325,7 +342,7 @@ sb_ParseFiles()
 					l_text := fn_Parsepdf(A_LoopFileFullPath)
 					The_TrackName := fn_QuickRegEx(l_text, value.pdftracknamepattern)
 					if (!A.isUndefined(The_TrackName)) {
-						log.add("Found the trackname: " The_TrackName " in {" A_LoopFileName "} with the RegEx {" value.pdftracknamepattern "} which was determined as not-acceptable")
+						logMsgAndGui("Found the trackname: " The_TrackName " in {" A_LoopFileName "} with the RegEx {" value.pdftracknamepattern "} which was determined as not-acceptable")
 					}
 				}
 				
@@ -354,14 +371,14 @@ sb_ParseFiles()
 			errorStorage.push(A_LoopFileFullPath)
 			msgbox, % A.print(A.filter(AllTracks_Array, {"originalFilePath": A_LoopFileFullPath})) " `n" A_LoopFileFullPath
 			msgline := "Searched config.ini under '" value.configkeylookup "' key for '" RegExResult "' and found nothing. Update the file"
-			log.add(msgline)
+			logMsgAndGui(msgline)
 			if (Settings.showUnhandledFiles != false) {
 				msg(msgline)
 			}
 		}
 	}
 
-	log.add("Finished checking all parsers defined in config")
+	logMsgAndGui("Finished checking all parsers defined in config")
 }
 
 
@@ -378,10 +395,10 @@ sb_RefreshAllTracksandGUI()
 	AllTracks_Array := A.sortBy(AllTracks_Array, ["trackname", "date", "group"])
 
 	Today := FormatTime(A_Now, "yyyyMMdd")
-	log.add("Refreshing GUI display list")
+	logMsgAndGui("Refreshing GUI display list")
 	LV_Delete()
 
-	html := fn_generateTable(AllTracks_Array, ["trackname", "date", "group", "originalFilePath"])
+	html := gui_generateTable(AllTracks_Array, ["trackname", "date", "group", "originalFilePath"])
 	neutron.qs("#mainOutput").innerHTML := html
 }
 
@@ -414,7 +431,7 @@ sb_RemoveBlackListedTracks(param_Alltracks, param_blacklist:="")
 			; remove any matches from the larger array and re-assign
 			param_Alltracks := A.difference(param_Alltracks, RemovableTracks)
 			if (A.size(RemovableTracks) > 0) {
-				log.add("Blacklisted tracks found, removed")
+				logMsgAndGui("Blacklisted tracks found, removed")
 			}
 		}
 	}
@@ -427,7 +444,7 @@ sb_GenerateJSON()
 
 	FormatTime, Today, , yyyyMMdd
 	FileDelete, % A_ScriptDir "\" Settings.AdminConsoleFileName
-	log.add("Building " Settings.AdminConsoleFileName)
+	logMsgAndGui("Building " Settings.AdminConsoleFileName)
 	data_json := []
 	for l_key, l_value in AllTracks_Array {
 		thistrack := l_value
@@ -447,7 +464,7 @@ sb_GenerateDB()
 {
 	global
 
-	log.add("Writing latest DB to " Settings.DBLocation)
+	logMsgAndGui("Writing latest DB to " Settings.DBLocation)
 	The_MemoryFile := JSON.stringify(AllTracks_Array)
 	FileDelete, % Settings.DBLocation
 	sleep, 600
@@ -458,7 +475,7 @@ sb_RenameFiles()
 {
 	global
 
-	log.add("Pulling files and renaming...")
+	logMsgAndGui("Pulling files and renaming...")
 	; Read each track in the array and perform file renaming
 	loop % AllTracks_Array.Count()
 	{
@@ -579,7 +596,7 @@ fn_GetModifiedDate(para_String) ;Example Input: "20140730Scottsville"
 		l_NewDateFormat = %RE_TimeStamp2%%RE_TimeStamp3%%RE_TimeStamp1%
 		return l_NewDateFormat
 	} else {
-		log.add(msg("Couldn't understand the date format of {" para_String "} Check for errors."))
+		logMsgAndGui(msg("Couldn't understand the date format of {" para_String "} Check for errors."))
 	}
 }
 
@@ -621,7 +638,7 @@ fn_InsertData(para_key, para_trackname, para_date, para_originalfilepath, para_b
 
 	; insert it into the array
 	AllTracks_Array.push(thisTrack)
-	log.add("Added track {" thisTrack.originalFilePath "} to memory")
+	logMsgAndGui("Added track {" thisTrack.originalFilePath "} to memory")
 }
 
 
@@ -784,10 +801,24 @@ fn_RestringExtenededAscii(param_value:="",param_map1:="",param_map2:="")
 ; Small functions
 ;\--/--\--/--\--/--\--/--\--/
 
-hfn_decluttermetadata(obj) {
+hfn_decluttermetadata(obj)
+{
 	return biga.pick(obj, ["name", "brand", "date", "filename", "group", "international"])
 }
 
+logMsgAndGui(param_message)
+{
+	global log
+	global neutron
+
+	; append to log
+	log.add(param_message)
+
+	; append to gui
+	liItem := neutron.doc.createElement("li")
+	liItem.innerHTML := param_message
+	neutron.qs("#logsOutput").appendChild(liItem)
+}
 
 
 ;/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\
