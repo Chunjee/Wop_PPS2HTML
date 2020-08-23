@@ -10,11 +10,13 @@
 	"dependencies": {
 		"array.ahk": "^0.1.8",
 		"biga.ahk": "^0.33.0",
+		"neutron.ahk": "chunjee/neutron.ahk",
 		"json.ahk": "chunjee/json.ahk",
 		"sort-array.ahk": "chunjee/sort-array.ahk",
 		"transformStringVars.ahk": "chunjee/transformStringVars.ahk",
 		"wrappers.ahk": "chunjee/wrappers.ahk",
-		"logs.ahk": "chunjee/logs.ahk"
+		"logs.ahk": "chunjee/logs.ahk",
+		"util-misc.ahk": "gist:cf6c862be8fa18c546d2fd67d86f84aa"
 	},
 	"devDependencies": {
 		"unit-testing.ahk": "github:chunjee/unit-testing.ahk"
