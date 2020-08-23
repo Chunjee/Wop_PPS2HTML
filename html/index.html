@@ -71,8 +71,8 @@
 				<div class="tab-pane fade show active" id="v-pills-home" role="tabpanel" aria-labelledby="v-pills-home-tab">
 					<!-- <h1>Welcome to Neutron</h1> -->
 					<button type="button" class="btn btn-lg btn-primary" onclick="ahk.sb_ParseFiles()">Parse Input Dirs</button>
-					<button type="button" class="btn btn-lg btn-primary" disabled>Rename Files</button>
-					<button type="button" class="btn btn-lg btn-primary" disabled>Parse</button>
+					<button type="button" class="btn btn-lg btn-primary" onclick="ahk.sb_RenameFiles()">Rename Files</button>
+					<!-- <button type="button" class="btn btn-lg btn-primary" onclick="ahk.sb_RenameFiles()">Clear Output Dir</button> -->
 					<br>
 					<div id="mainOutput"></div>
 					
@@ -82,7 +82,7 @@
 				<!-- v-pills-log -->
 				<div class="tab-pane" id="v-pills-log" role="tabpanel" aria-labelledby="v-pills-log-tab">
 					<h1>Logs</h1>
-					<button type="button" onclick="ahk.Button(event)" class="btn btn-block btn-dark">Open log file</button>
+					<button type="button" onclick="ahk.gui_btn_OpenLogs(event)" class="btn btn-block btn-dark">Open logs directory</button>
 					<p id="logsOutputp"></p>
 					<div style="max-height: 600px;">
 						<ul id="logsOutput">
@@ -90,7 +90,7 @@
 						</ul>
 					</div>
 
-					<table class="table">
+					<table class="table" style="max-height: 600px;">
 						<!-- replaced with logic -->
 					</table>
 
@@ -107,7 +107,7 @@
 
 				<!-- v-pills-settings -->
 				<div class="tab-pane fade" id="v-pills-settings" role="tabpanel" aria-labelledby="v-pills-settings-tab">
-					Settings
+					<h1>Logs</h1>
 				</div>
 				<!-- End v-pills-settings -->
 

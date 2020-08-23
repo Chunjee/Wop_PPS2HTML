@@ -76,11 +76,11 @@ Settings.exportDir := transformStringVars(Settings.exportDir)
 FileCreateDir(Settings.exportDir)
 ;; Import Existing Track DB File
 FileRead, The_MemoryFile, % Settings.DBLocation
-if (A.size(The_MemoryFile) > 10) {
+if (A.size(The_MemoryFile) > 2) {
 	logMsgAndGui("Parsing " Settings.DBLocation)
 	AllTracks_Array := JSON.parse(The_MemoryFile)
 } else {
-	logMsgAndGui("No existing DB found, creating new one in memory")
+	logMsgAndGui("No existing DB found, creating new one at {" Settings.DBLocation "}")
 	AllTracks_Array := []
 }
 ; msgbox, % A.print(A.filter(AllTracks_Array, {"originalFilePath": "\\10.209.2.60\Incoming\trackdata\200701_79_Epp.pdf"}))
@@ -457,13 +457,15 @@ sb_GenerateJSON()
 	}
 	; declutter metadata
 	data_json := A.map(data_json, Func("hfn_decluttermetadata"))
-	FileAppend, % JSON.stringify(A.uniq(data_json)), % transformStringVars(Settings.exportDir "\" Settings.AdminConsoleFileName)
+	FileAppend, % JSON.stringify(A.uniq(data_json)), % transformStringVars(Settings.exportDir Settings.AdminConsoleFileName)
+	logMsgAndGui(Settings.AdminConsoleFileName " written to " transformStringVars(Settings.exportDir Settings.AdminConsoleFileName))
 }
 
 sb_GenerateDB()
 {
 	global
 
+	Settings.DBLocation := transformStringVars(Settings.DBLocation)
 	logMsgAndGui("Writing latest DB to " Settings.DBLocation)
 	The_MemoryFile := JSON.stringify(AllTracks_Array)
 	FileDelete, % Settings.DBLocation
@@ -471,7 +473,7 @@ sb_GenerateDB()
 	FileAppend, %The_MemoryFile%, % Settings.DBLocation
 }
 
-sb_RenameFiles()
+sb_RenameFiles(param_neutron:="", param_event:="")
 {
 	global
 

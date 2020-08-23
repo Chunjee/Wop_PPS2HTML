@@ -77,3 +77,12 @@ gui_genProgress(param_fill, param_style:="")
 	}
 	return "<div class=""progress""><div class=""progress-bar progress-bar-striped progress-bar-animated"" " param_style "role=""progressbar"" style=""width: " progressPercent "%"" aria-valuemin=""0"" aria-valuemax=""100""></div></div>"
 }
+
+
+
+gui_btn_OpenLogs(param_neutron:="", param_event:="") {
+	global log
+
+	explorerpath:= log.logDir
+	Run, %explorerpath%
+}
