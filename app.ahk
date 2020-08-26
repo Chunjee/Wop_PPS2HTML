@@ -75,15 +75,16 @@ Settings.trackMappingConfig := transformStringVars(Settings.trackMappingConfig)
 Settings.exportDir := transformStringVars(Settings.exportDir)
 FileCreateDir(Settings.exportDir)
 ;; Import Existing Track DB File
-FileRead, The_MemoryFile, % Settings.DBLocation
-if (A.size(The_MemoryFile) > 2) {
-	logMsgAndGui("Parsing " Settings.DBLocation)
-	AllTracks_Array := JSON.parse(The_MemoryFile)
-} else {
-	logMsgAndGui("No existing DB found, creating new one at {" Settings.DBLocation "}")
-	AllTracks_Array := []
+if (Settings.DBLocation) {
+	FileRead, The_MemoryFile, % Settings.DBLocation
+	if (A.size(The_MemoryFile) > 2) {
+		logMsgAndGui("Parsing " Settings.DBLocation)
+		AllTracks_Array := JSON.parse(The_MemoryFile)
+	} else {
+		logMsgAndGui("No DB found, creating new one at {" Settings.DBLocation "}")
+		AllTracks_Array := []
+	}
 }
-; msgbox, % A.print(A.filter(AllTracks_Array, {"originalFilePath": "\\10.209.2.60\Incoming\trackdata\200701_79_Epp.pdf"}))
 
 
 ;/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\
@@ -91,11 +92,11 @@ if (A.size(The_MemoryFile) > 2) {
 ;\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/
 ;; Loop all pdfs and parse them
 sb_ParseFiles()
+; ALLFILES := fn_FindFiles(Settings.parsing)
 
 ; more ideal main loop
 ; for key, value in Settings.parsing {
 ; 	; input is parser and array of filepaths, output is tracks <--
-
 ; 	; input is parser, output is array of files?
 ; 	; input is parser, output is array of tracks?
 ; }
@@ -125,10 +126,6 @@ if (unhandledFiles.Count() > 0 && Settings.showUnhandledFiles) {
 ; Remove blacklisted tracks
 ;\--/--\--/--\--/
 sb_RemoveBlackListedTracks(AllTracks_Array, Settings.blacklist)
-
-
-; kick tracks out that are old AND refresh GUI display
-sb_RefreshAllTracksandGUI()
 
 
 ;/--\--/--\--/--\
@@ -226,7 +223,7 @@ sb_ReadSettings() {
 }
 
 
-sb_ParseFiles(param_neutron:="")
+sb_ParseFiles(param_neutron:="", event:="")
 {
 	global
 
@@ -341,8 +338,10 @@ sb_ParseFiles(param_neutron:="")
 				if (value.pdftracknamepattern != "") {
 					l_text := fn_Parsepdf(A_LoopFileFullPath)
 					The_TrackName := fn_QuickRegEx(l_text, value.pdftracknamepattern)
-					if (!A.isUndefined(The_TrackName)) {
+					if (A.isUndefined(The_TrackName)) {
 						logMsgAndGui("Found the trackname: " The_TrackName " in {" A_LoopFileName "} with the RegEx {" value.pdftracknamepattern "} which was determined as not-acceptable")
+					} else {
+						logMsgAndGui("Found the trackname: " The_TrackName " in {" A_LoopFileName "}.")
 					}
 				}
 				
@@ -364,6 +363,7 @@ sb_ParseFiles(param_neutron:="")
 			}
 		}
 	}
+	sb_RefreshAllTracksandGUI()
 	; fn_guiUpdateProgressBar("The_ProgressIndicatorBar", 0)
 
 	loop, % errorStorage.Count() {
@@ -385,7 +385,7 @@ sb_ParseFiles(param_neutron:="")
 sb_RefreshAllTracksandGUI()
 {
 	global
-
+	
 	Today := FormatTime(A_Now, "yyyyMMdd")
 	;Kick Array items over 30 days old out
 	AllTracks_Array := A.filter(AllTracks_Array, Func("helper_returnNewDates"))
@@ -464,16 +464,17 @@ sb_GenerateJSON()
 sb_GenerateDB()
 {
 	global
-
-	Settings.DBLocation := transformStringVars(Settings.DBLocation)
-	logMsgAndGui("Writing latest DB to " Settings.DBLocation)
-	The_MemoryFile := JSON.stringify(AllTracks_Array)
-	FileDelete, % Settings.DBLocation
-	sleep, 600
-	FileAppend, %The_MemoryFile%, % Settings.DBLocation
+	if (Settings.DBLocation) {
+		Settings.DBLocation := transformStringVars(Settings.DBLocation)
+		logMsgAndGui("Writing latest DB to " Settings.DBLocation)
+		The_MemoryFile := JSON.stringify(AllTracks_Array)
+		FileDelete, % Settings.DBLocation
+		sleep, 600
+		FileAppend, %The_MemoryFile%, % Settings.DBLocation
+	}
 }
 
-sb_RenameFiles(param_neutron:="", param_event:="")
+sb_RenameFiles(param_neutron:="")
 {
 	global
 
@@ -508,6 +509,7 @@ sb_RenameFiles(param_neutron:="", param_event:="")
 			}
 		}
 	}
+	logMsgAndGui("Finished moving and renaming all files")
 	; fn_guiUpdateProgressBar("The_ProgressIndicatorBar", 0)
 }
 
@@ -519,6 +521,13 @@ sb_InstallFiles()
 	FileCreateDir, %A_ScriptDir%\data\
 	FileCreateDir, %A_ScriptDir%\data\Temp\
 	FileInstall, data\PDFtoTEXT.exe, %A_ScriptDir%\data\PDFtoTEXT.exe, 1
+
+	; html gui
+	FileCreateDir, %A_ScriptDir%\html\
+	FileInstall, html\index.html, %A_ScriptDir%\html\index.html
+	FileInstall, html\bootstrap.min.css, %A_ScriptDir%\html\bootstrap.min.css
+	FileInstall, html\bootstrap.min.js, %A_ScriptDir%\html\bootstrap.min.js
+	FileInstall, html\jquery.min.js, %A_ScriptDir%\html\jquery.min.js
 }
 
 sb_GlobalNameSpace()

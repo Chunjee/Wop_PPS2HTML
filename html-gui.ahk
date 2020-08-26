@@ -10,30 +10,17 @@ gui_Create()
 	neutron.Show("w2080 h1000")
 	neutron.Maximize()
 
-	return
-	;Menu Shortcuts
-	Menu_Confluence:
-	Run https://betfairus.atlassian.net/wiki/spaces/wog/pages/10650365/Ops+Tool+-+PPS2HTML+Automates+Free+Past+Performance+File+Renaming+and+HTML
-	return
-
-	Menu_About:
-	msgbox, % "Renames Free PP files and generated HTML from all files run through the system. `nv" The_VersionNumb
-	return
-
-	Menu_Vars:
-	ListVars
-	return
-
-	Menu_File-Restart:
-	log.finalizeLog()
-	Reload
-
-	Menu_File-Quit:
-	GuiClose:
-	log.finalizeLog()
-	exitapp
 }
 
+
+nc_btnClose(neutron)
+{
+	global log
+
+	log.add("GUI closed by user. Exiting.")
+	log.finalizeLog()
+	WinClose, % "ahk_id" neutron.Close()
+}
 
 gui_generateTable(param_data, param_columns:="", param_style:="table-bordered table-striped")
 {
@@ -69,6 +56,7 @@ gui_generateTable(param_data, param_columns:="", param_style:="table-bordered ta
 	return out
 }
 
+
 gui_genProgress(param_fill, param_style:="")
 {
 	progressPercent := param_fill * 100
@@ -79,8 +67,7 @@ gui_genProgress(param_fill, param_style:="")
 }
 
 
-
-gui_btn_OpenLogs(param_neutron:="", param_event:="") {
+nc_btnOpenLogs(param_neutron:="") {
 	global log
 
 	explorerpath:= log.logDir
