@@ -39,6 +39,7 @@ The_VersionNumb := "4.0.0"
 ;; Startup special global variables
 A := new biga()
 gui_Create()
+nr_setByID("#theVersion", "v" The_VersionNumb)
 
 ;; Make some special vars for config file date prediction
 Tomorrow := A_Now
