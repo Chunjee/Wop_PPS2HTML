@@ -4,7 +4,7 @@
 gui_Create()
 {
 	global
-	
+
 	neutron := new NeutronWindow()
 	neutron.load("html\index.html")
 	neutron.Show("w2080 h1000")
@@ -20,12 +20,28 @@ nc_btnClose(neutron)
 	log.add("GUI closed by user. Exiting.")
 	log.finalizeLog()
 	WinClose, % "ahk_id" neutron.Close()
+	Exitapp
 }
+
+
+nr_setByID(para_id, param_html)
+{
+	global neutron
+
+	try {
+		neutron.qs(para_id).innerHTML := param_html
+	}
+	catch {
+		return false
+	}
+	return true
+}
+
 
 gui_generateTable(param_data, param_columns:="", param_style:="table-bordered table-striped")
 {
 	static nw := NeutronWindow
-	
+
 	if !param_columns
 	{
 		param_columns := []
@@ -37,12 +53,12 @@ gui_generateTable(param_data, param_columns:="", param_style:="table-bordered ta
 			}
 		}
 	}
-	
-	out := "<table class=""table " param_style " ""><thead class=""thead-light"">"
+
+	out := "<table class=""table " param_style " ""><thead class=""thead-dark"">"
 	for _, title in param_columns
 		out .= nw.FormatHTML("<td>{}</td>", title)
 	out .= "</thead>"
-	
+
 	out .= "<tbody>"
 	for y, row in param_data
 	{
@@ -52,7 +68,7 @@ gui_generateTable(param_data, param_columns:="", param_style:="table-bordered ta
 		out .= "</tr>"
 	}
 	out .= "</tbody></table>"
-	
+
 	return out
 }
 
