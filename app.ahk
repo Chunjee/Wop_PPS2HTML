@@ -157,7 +157,9 @@ return
 ; Menu Options
 ;\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/
 
-Menu_File-CustomTrack:
+sb_HandleCustomTrack(){
+	global
+
 	logMsgAndGui(A_UserName " attempting to add custom track")
 	selectedfile := FileSelectFile("", A_ScriptDir, "Please select the file", "*pdf")
 
@@ -189,10 +191,11 @@ Menu_File-CustomTrack:
 
 	fn_InsertData(u_association, u_trackname, u_date, selectedfile, l_platforms, l_international, "sp")
 	sb_RefreshAllTracksandGUI()
-return
+}
+
 
 Menu_File-DeletePDFs:
-loop, Files, %A_ScriptDir%\*.pdf, 
+loop, Files, %A_ScriptDir%\*.pdf,
 {
 	FileDelete, % A_LoopFileFullPath
 }
@@ -209,7 +212,7 @@ sb_ReadSettings() {
 	FileRead, The_MemoryFile, % settings_loc
 	l_settings := JSON.parse(The_MemoryFile)
 	The_MemoryFile := ;blank
-	
+
 
 	; update gui with all paths
 	pathsAndAssoc := []
@@ -237,7 +240,7 @@ sb_ParseFiles(param_neutron:="", event:="")
 	fn_InitializeIni(transformStringVars(Settings.trackMappingConfig))
 	fn_LoadIni(transformStringVars(Settings.trackMappingConfig))
 
-	if (A.isUndefined(Settings.parsing)) { 
+	if (A.isUndefined(Settings.parsing)) {
 		logMsgAndGui(msg("No parsers found in " settings_loc " file.`n`nThe application will quit"))
 		ExitApp
 	}
@@ -289,7 +292,7 @@ sb_ParseFiles(param_neutron:="", event:="")
 
 			; do for any regex pattern matches in settings file
 			if (RegExResult != false) {
-				
+
 				; if any "do" values or array
 				if (value.do) {
 					; delete any duplicate downloads
@@ -308,6 +311,9 @@ sb_ParseFiles(param_neutron:="", event:="")
 					dateSearchText := TOM_YYYY TOM_MM TOM_DD
 				}
 				The_Date := fn_DateParser(dateSearchText)
+				if (The_Date == false) {
+					continue
+				}
 				The_Country := value.association
 				;; Pull Trackname from Regex if specified
 				if (value.tracknameinfile) {
@@ -326,7 +332,7 @@ sb_ParseFiles(param_neutron:="", event:="")
 					FormatTime, The_Date, %local_date%, yyyyMMdd
 					; msgbox, % "parsed date is " local_date "| decrementday is " The_Date
 				}
-				
+
 
 				;; Pull trackname from ini lookup if specified
 				if (value.configkeylookup != "") {
@@ -345,11 +351,11 @@ sb_ParseFiles(param_neutron:="", event:="")
 						logMsgAndGui("Found the trackname: " The_TrackName " in {" A_LoopFileName "}.")
 					}
 				}
-				
+
 
 				;; Re-search for trackname in pdf if specified
 				if (value.relookuptrackname != "") {
-					
+
 				}
 
 
@@ -386,11 +392,11 @@ sb_ParseFiles(param_neutron:="", event:="")
 sb_RefreshAllTracksandGUI()
 {
 	global
-	
+
 	Today := FormatTime(A_Now, "yyyyMMdd")
 	;Kick Array items over 30 days old out
 	AllTracks_Array := A.filter(AllTracks_Array, Func("helper_returnNewDates"))
-	;Kick out duplicates 
+	;Kick out duplicates
 	AllTracks_Array := sb_KickOutDuplicatesCustom(AllTracks_Array)
 	;Sort all Array Content by DateTrack ; No not do in descending order as this will flip the output. Sat,Fri,Thur
 	AllTracks_Array := A.sortBy(AllTracks_Array, ["trackname", "date", "group"])
@@ -542,9 +548,9 @@ sb_GlobalNameSpace()
 	exepath := A_ScriptDir "\data\PDFtoTEXT.exe"
 	txtpath := A_ScriptDir "\data\TEMPPDFTEXT.txt"
 
-	tomorrow := a_now	
+	tomorrow := a_now
 	tomorrow += 1, days
-	formattime, tomorrowsyear, %tomorrow%, yyyy 
+	formattime, tomorrowsyear, %tomorrow%, yyyy
 	formattime, tomorrow_date, %tomorrow%, yyyyMMdd
 }
 
@@ -618,7 +624,7 @@ fn_InsertData(para_key, para_trackname, para_date, para_originalfilepath, para_b
 {
 	global AllTracks_Array
 	global A
-	
+
 	thisTrack := { "brand": para_brand
 				 , "date": para_date
 				 , "filename": fn_Filename(para_trackname, para_date, para_key, para_prefix)
@@ -684,7 +690,7 @@ fn_DatePresentFuture(param_queryDate, param_comparisonDate:="") {
 
 	; prepare data
 	FormatTime, OutputVar, %param_comparisonDate%, yyyyMMdd
-	
+
 	; perform
 	if (OutputVar <= param_queryDate) {
 		return true
@@ -698,8 +704,6 @@ fn_DatePresentFuture(param_queryDate, param_comparisonDate:="") {
 
 helper_returnNewDates(param_track)
 {
-	global A
-
 	YesterdaysDate := A_Now
 	YesterdaysDate += -1, d
 	YesterdaysDate := A.join(A.slice(YesterdaysDate, 1, 8), "")
@@ -707,9 +711,17 @@ helper_returnNewDates(param_track)
 		return false
 	}
 	;See if item is new enough to stay in the array
-	if (param_track.date > YesterdaysDate) {
-		return true
+	if (param_track.date < YesterdaysDate) {
+		return false
 	}
+
+	NextMonthDate := A_Now
+	NextMonthDate += 30, d
+	NextMonthDate := A.join(A.slice(NextMonthDate, 1, 8), "")
+	if (param_track.date > NextMonthDate) {
+		return false
+	}
+	return true
 }
 
 fn_Parsepdf(para_FilePath) {
@@ -912,4 +924,3 @@ return
 ;/--\--/--\--/--\--/--\--/--\
 ; GUI Subroutines
 ;\--/--\--/--\--/--\--/--\--/
-
