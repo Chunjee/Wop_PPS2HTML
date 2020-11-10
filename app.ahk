@@ -10,7 +10,7 @@ SetBatchLines -1 ;Go as fast as CPU will allow
 #NoTrayIcon
 #SingleInstance force
 The_ProjectName := "PPS2HTML"
-The_VersionNumb := "4.1.1"
+The_VersionNumb := "4.1.2"
 
 ; GUI
 #Include html-gui.ahk
@@ -221,7 +221,7 @@ sb_ReadSettings() {
 	}
 	pathsAndAssoc := A.uniq(pathsAndAssoc)
 	; add parent export dir
-	pathsAndAssoc.unshift({"name":"*EXPORT DIRECTORY*", "dir":transformStringVars(Settings.exportdir)})
+	pathsAndAssoc.unshift({"name":"*EXPORT DIRECTORY*", "dir":transformStringVars(Settings.exportDir)})
 	html := gui_generateTable(pathsAndAssoc, ["name", "association", "dir"])
 	neutron.qs("#pathsOutput").innerHTML := html
 
@@ -229,7 +229,7 @@ sb_ReadSettings() {
 }
 
 
-sb_ParseFiles(param_neutron:="", event:="")
+sb_ParseFiles()
 {
 	global
 
@@ -440,7 +440,7 @@ sb_RemoveBlackListedTracks(param_Alltracks, param_blacklist:="")
 			; remove any matches from the larger array and re-assign
 			param_Alltracks := A.difference(param_Alltracks, RemovableTracks)
 			if (A.size(RemovableTracks) > 0) {
-				logMsgAndGui("Blacklisted tracks found, removed")
+				logMsgAndGui(A.size(RemovableTracks) " blacklisted tracks found, removed")
 			}
 		}
 	}
@@ -483,7 +483,7 @@ sb_GenerateDB()
 	}
 }
 
-sb_RenameFiles(param_neutron:="")
+sb_RenameFiles()
 {
 	global
 
@@ -518,7 +518,7 @@ sb_RenameFiles(param_neutron:="")
 			}
 		}
 	}
-	logMsgAndGui("Finished moving and renaming {{" AllTracks_Array.Count() "}} files")
+	logMsgAndGui("Finished moving and renaming {{" AllTracks_Array.Count() "}} files to " transformStringVars(Settings.exportDir))
 	; fn_guiUpdateProgressBar("The_ProgressIndicatorBar", 0)
 }
 

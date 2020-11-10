@@ -83,6 +83,25 @@ gui_genProgress(param_fill, param_style:="")
 }
 
 
+btn_Parse(param_neutron:="", param_event:="")
+{
+	AUTOMODE := false
+	sb_ParseFiles()
+	sb_GenerateJSON()
+}
+
+btn_Rename(param_neutron:="", param_event:="")
+{
+	sb_RenameFiles()
+	sb_GenerateJSON()
+}
+
+btn_HandleCustomTrack(param_neutron:="", param_event:="")
+{
+	sb_HandleCustomTrack()
+	sb_GenerateJSON()
+}
+
 nc_btnOpenLogs(param_neutron:="") {
 	global log
 
