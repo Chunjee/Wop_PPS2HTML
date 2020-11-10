@@ -86,11 +86,13 @@ return
 
 Parse:
 AUTOMODE := false
-Sb_ParseFiles()
+sb_ParseFiles()
+sb_GenerateJSON()
 return
 
 Rename:
-Sb_RenameFiles()
+sb_RenameFiles()
+sb_GenerateJSON()
 return
 
 ;/--\--/--\--/--\

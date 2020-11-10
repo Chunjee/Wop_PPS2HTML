@@ -1,6 +1,6 @@
 {
 	"name": "wop_pps2html.ahk",
-	"version": "4.0.0",
+	"version": "4.1.1",
 	"description": "Renames FreePPs pdf files; then generates html for use with the normal FreePPs process.",
 	"main": "app.ahk",
 	"repository": {

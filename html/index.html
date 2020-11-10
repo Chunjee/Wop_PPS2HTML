@@ -60,6 +60,8 @@
 				aria-controls="v-pills-paths" aria-selected="false">Paths</a>
 			<a class="nav-link text-light" id="v-pills-settings-tab" data-toggle="pill" href="#v-pills-settings" role="tab"
 				aria-controls="v-pills-settings" aria-selected="false">Settings</a>
+			<!-- <a class="nav-link text-light" id="v-pills-settings-tab" data-toggle="pill" href="#v-pills-misc" role="tab"
+				aria-controls="v-pills-settings" aria-selected="false">Misc</a> -->
 			<p id="theVersion" style="position: absolute; bottom: 0; left: 20px; width: 20px; height: 20px;"></p>
 		</div>
 		<!-- End Sidebar -->
@@ -73,10 +75,11 @@
 					<!-- <h1>Welcome to Neutron</h1> -->
 					<button type="button" class="btn btn-lg btn-primary" onclick="ahk.sb_ParseFiles()">Parse Input Dirs</button>
 					<button type="button" class="btn btn-lg btn-primary" onclick="ahk.sb_RenameFiles()">Rename Files</button>
+					<button type="button" class="btn btn-lg btn-secondary" onclick="ahk.sb_HandleCustomTrack()">Add Custom Track</button>
 					<!-- <button type="button" class="btn btn-lg btn-primary" onclick="ahk.sb_RenameFiles()">Clear Output Dir</button> -->
 					<br><br>
-					<div id="mainOutput" style="max-height: 600px; max-width: 100%;"></div>
-					
+					<div id="mainOutput" style="max-height: 10px; max-width: 100%;"></div>
+
 				</div>
 				<!-- End v-pills-home -->
 

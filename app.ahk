@@ -10,7 +10,7 @@ SetBatchLines -1 ;Go as fast as CPU will allow
 #NoTrayIcon
 #SingleInstance force
 The_ProjectName := "PPS2HTML"
-The_VersionNumb := "4.0.0"
+The_VersionNumb := "4.1.1"
 
 ; GUI
 #Include html-gui.ahk
@@ -76,13 +76,13 @@ Settings.trackMappingConfig := transformStringVars(Settings.trackMappingConfig)
 Settings.exportDir := transformStringVars(Settings.exportDir)
 FileCreateDir(Settings.exportDir)
 ;; Import Existing Track DB File
-if (Settings.DBLocation) {
+if (Settings.DBLocation != "") {
 	FileRead, The_MemoryFile, % Settings.DBLocation
 	if (A.size(The_MemoryFile) > 2) {
 		logMsgAndGui("Parsing " Settings.DBLocation)
 		AllTracks_Array := JSON.parse(The_MemoryFile)
 	} else {
-		logMsgAndGui("No DB found, creating new one at {" Settings.DBLocation "}")
+		logMsgAndGui("No DB found, creating new one at {{" Settings.DBLocation "}}")
 		AllTracks_Array := []
 	}
 }
@@ -220,6 +220,8 @@ sb_ReadSettings() {
 		pathsAndAssoc.push(A.pick(obj, ["name", "association", "dir"]))
 	}
 	pathsAndAssoc := A.uniq(pathsAndAssoc)
+	; add parent export dir
+	pathsAndAssoc.unshift({"name":"*EXPORT DIRECTORY*", "dir":transformStringVars(Settings.exportdir)})
 	html := gui_generateTable(pathsAndAssoc, ["name", "association", "dir"])
 	neutron.qs("#pathsOutput").innerHTML := html
 
@@ -311,7 +313,7 @@ sb_ParseFiles(param_neutron:="", event:="")
 					dateSearchText := TOM_YYYY TOM_MM TOM_DD
 				}
 				The_Date := fn_DateParser(dateSearchText)
-				if (The_Date == false) {
+				if (The_Date == false || !fn_checkValidDate(The_Date)) {
 					continue
 				}
 				The_Country := value.association
@@ -385,7 +387,7 @@ sb_ParseFiles(param_neutron:="", event:="")
 		}
 	}
 
-	logMsgAndGui("Finished checking all parsers defined in config")
+	logMsgAndGui("Finished checking all {{" A.size(Settings.parsing) "}} parsers defined in settings json")
 }
 
 
@@ -485,7 +487,7 @@ sb_RenameFiles(param_neutron:="")
 {
 	global
 
-	logMsgAndGui("Pulling files and renaming...")
+	logMsgAndGui("Attempting to pull files from disperse directories and renaming...")
 	; Read each track in the array and perform file renaming
 	loop % AllTracks_Array.Count()
 	{
@@ -506,17 +508,17 @@ sb_RenameFiles(param_neutron:="")
 		FileCopy, % thisTrack.originalFilePath, %exportPath%, 1
 		; if the file move was unsuccessful for any reason, tell the user
 		if (Errorlevel != 0) {
-			msg("There was a problem renaming the following: " thisTrack.originalFilePath " (typically Permissions\FileInUse)")
+			logMsgAndGui("There was a problem renaming the following: " thisTrack.originalFilePath " (typically Permissions\FileInUse)")
 		} else {
 			if (InStr(thisTrack.originalFilePath, A_ScriptDir)) { ;file is in same dir as exe, delete if move was success
 				FileDelete, % thisTrack.originalFilePath
 				if (Errorlevel != 0) {
-					msg("There was a problem deleting the old file: " thisTrack.originalFilePath " (typically Permissions\FileInUse)")
+					logMsgAndGui("There was a problem deleting the old file: " thisTrack.originalFilePath " (typically Permissions\FileInUse)")
 				}
 			}
 		}
 	}
-	logMsgAndGui("Finished moving and renaming all files")
+	logMsgAndGui("Finished moving and renaming {{" AllTracks_Array.Count() "}} files")
 	; fn_guiUpdateProgressBar("The_ProgressIndicatorBar", 0)
 }
 
@@ -704,24 +706,10 @@ fn_DatePresentFuture(param_queryDate, param_comparisonDate:="") {
 
 helper_returnNewDates(param_track)
 {
-	YesterdaysDate := A_Now
-	YesterdaysDate += -1, d
-	YesterdaysDate := A.join(A.slice(YesterdaysDate, 1, 8), "")
-	if (!fn_DateValidate(param_track.date)) {
-		return false
+	if (fn_checkValidDate(param_track.date)) {
+		return true
 	}
-	;See if item is new enough to stay in the array
-	if (param_track.date < YesterdaysDate) {
-		return false
-	}
-
-	NextMonthDate := A_Now
-	NextMonthDate += 30, d
-	NextMonthDate := A.join(A.slice(NextMonthDate, 1, 8), "")
-	if (param_track.date > NextMonthDate) {
-		return false
-	}
-	return true
+	return false
 }
 
 fn_Parsepdf(para_FilePath) {
@@ -828,6 +816,31 @@ fn_RestringExtenededAscii(param_value:="",param_map1:="",param_map2:="")
 hfn_decluttermetadata(obj)
 {
 	return biga.pick(obj, ["name", "brand", "date", "filename", "group", "international"])
+}
+
+fn_checkValidDate(param_date)
+{
+	; check for valid formatted number
+	if (!fn_DateValidate(param_date)) {
+		return false
+	}
+
+	; check for older than yesterday
+	YesterdaysDate := A_Now
+	YesterdaysDate += -1, d
+	YesterdaysDate := A.join(A.slice(YesterdaysDate, 1, 8), "")
+	if (param_date < YesterdaysDate) {
+		return false
+	}
+
+	; check for 30+ days
+	NextMonthDate := A_Now
+	NextMonthDate += 30, d
+	NextMonthDate := A.join(A.slice(NextMonthDate, 1, 8), "")
+	if (param_date > NextMonthDate) {
+		return false
+	}
+	return true
 }
 
 logMsgAndGui(param_message)
