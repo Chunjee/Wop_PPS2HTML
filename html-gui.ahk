@@ -102,6 +102,14 @@ btn_HandleCustomTrack(param_neutron:="", param_event:="")
 	sb_GenerateJSON()
 }
 
+btn_DeletePDFs(param_neutron:="", param_event:="")
+{
+	loop, Files, %A_ScriptDir%\*.pdf
+	{
+		FileDelete, % A_LoopFileFullPath
+	}
+}
+
 nc_btnOpenLogs(param_neutron:="") {
 	global log
 

@@ -10,7 +10,7 @@ SetBatchLines -1 ;Go as fast as CPU will allow
 #NoTrayIcon
 #SingleInstance force
 The_ProjectName := "PPS2HTML"
-The_VersionNumb := "4.1.2"
+The_VersionNumb := "4.2.1"
 
 ; GUI
 #Include html-gui.ahk
@@ -57,6 +57,7 @@ if (A.isUndefined(Settings.logfiledir)) {
 	Settings.logfiledir := "C:\TVG\LogFiles\"
 }
 log := new log_class(The_ProjectName "-" A_YYYY A_MM A_DD, Settings.logfiledir)
+log.maxNumbOldLogs_Default := 0
 log.set_applicationname(The_ProjectName)
 logMsgAndGui(The_ProjectName " launched from user " A_UserName " on the machine " A_ComputerName ". Version: v" The_VersionNumb)
 
@@ -67,7 +68,7 @@ if (A.includes(A_Args, "auto") || InStr(A_Args, "auto")) {
 	logMsgAndGui("Automode enabled")
 }
 if (A.includes(A_Args, "cleardir")) {
-	Gosub, Menu_File-DeletePDFs
+	btn_DeletePDFs()
 }
 
 
@@ -81,6 +82,7 @@ if (Settings.DBLocation != "") {
 	if (A.size(The_MemoryFile) > 2) {
 		logMsgAndGui("Parsing " Settings.DBLocation)
 		AllTracks_Array := JSON.parse(The_MemoryFile)
+		logMsgAndGui("{{" A.size(AllTracks_Array) "}} tracks found in DB history")
 	} else {
 		logMsgAndGui("No DB found, creating new one at {{" Settings.DBLocation "}}")
 		AllTracks_Array := []
@@ -192,14 +194,6 @@ sb_HandleCustomTrack(){
 	fn_InsertData(u_association, u_trackname, u_date, selectedfile, l_platforms, l_international, "sp")
 	sb_RefreshAllTracksandGUI()
 }
-
-
-Menu_File-DeletePDFs:
-loop, Files, %A_ScriptDir%\*.pdf,
-{
-	FileDelete, % A_LoopFileFullPath
-}
-return
 
 ;/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\
 ; Subroutines
@@ -347,7 +341,7 @@ sb_ParseFiles()
 				if (value.pdftracknamepattern != "") {
 					l_text := fn_Parsepdf(A_LoopFileFullPath)
 					The_TrackName := fn_QuickRegEx(l_text, value.pdftracknamepattern)
-					if (A.isUndefined(The_TrackName)) {
+					if (A.isUndefined(The_TrackName) || The_TrackName == 0) {
 						logMsgAndGui("Found the trackname: " The_TrackName " in {" A_LoopFileName "} with the RegEx {" value.pdftracknamepattern "} which was determined as not-acceptable")
 					} else {
 						logMsgAndGui("Found the trackname: " The_TrackName " in {" A_LoopFileName "}.")

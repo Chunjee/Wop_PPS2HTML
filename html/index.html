@@ -60,8 +60,8 @@
 				aria-controls="v-pills-paths" aria-selected="false">Paths</a>
 			<a class="nav-link text-light" id="v-pills-settings-tab" data-toggle="pill" href="#v-pills-settings" role="tab"
 				aria-controls="v-pills-settings" aria-selected="false">Settings</a>
-			<!-- <a class="nav-link text-light" id="v-pills-settings-tab" data-toggle="pill" href="#v-pills-misc" role="tab"
-				aria-controls="v-pills-settings" aria-selected="false">Misc</a> -->
+			<a class="nav-link text-light" id="v-pills-settings-tab" data-toggle="pill" href="#v-pills-misc" role="tab"
+				aria-controls="v-pills-settings" aria-selected="false">Misc</a>
 			<p id="theVersion" style="position: absolute; bottom: 0; left: 20px; width: 20px; height: 20px;"></p>
 		</div>
 		<!-- End Sidebar -->
@@ -73,8 +73,8 @@
 				<!-- v-pills-home -->
 				<div class="tab-pane fade show active" id="v-pills-home" role="tabpanel" aria-labelledby="v-pills-home-tab">
 					<!-- <h1>Welcome to Neutron</h1> -->
-					<button type="button" class="btn btn-lg btn-primary" onclick="ahk.btn_Parse">Parse Input Dirs</button>
-					<button type="button" class="btn btn-lg btn-primary" onclick="ahk.btn_Rename">Rename Files</button>
+					<button type="button" class="btn btn-lg btn-primary" onclick="ahk.btn_Parse()">Parse Input Dirs</button>
+					<button type="button" class="btn btn-lg btn-primary" onclick="ahk.btn_Rename()">Rename Files</button>
 					<button type="button" class="btn btn-lg btn-secondary" onclick="ahk.btn_HandleCustomTrack()">Add Custom Track</button>
 					<!-- <button type="button" class="btn btn-lg btn-primary" onclick="ahk.sb_RenameFiles()">Clear Output Dir</button> -->
 					<br><br>
@@ -115,6 +115,13 @@
 					<p>None at the moment available for change here. Check settings.json</p>
 				</div>
 				<!-- End v-pills-settings -->
+
+				<!-- v-pills-misc -->
+				<div class="tab-pane fade" id="v-pills-misc" role="tabpanel" aria-labelledby="v-pills-misc-tab">
+					<h1>Misc</h1>
+					<button type="button" class="btn btn-lg btn-primary" onclick="ahk.btn_DeletePDFs()">Clear Output Folder</button>
+				</div>
+				<!-- End v-pills-misc -->
 
 			</div>
 		</div>
