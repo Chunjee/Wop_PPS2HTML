@@ -1,0 +1,28 @@
+{
+	"DBLocation": "%A_ScriptDir%\\data\\DB.json",
+	"AdminConsoleFilePath": "%A_ScriptDir%\\output\\%A_YYYY%-%A_MM%-%A_DD%\\data.json",
+	"exportDir": "%A_ScriptDir%\\output\\%A_YYYY%-%A_MM%-%A_DD%\\",
+
+	"parsing": [
+		{
+			"name": "Australia_NEW",
+			"dir": "%A_ScriptDir%",
+			"filepattern": "(.*\\d?pp%TOM_MM%%TOM_DD%\\.pdf)",
+			"weeksearch": true,
+			"pdftracknamepattern": "Australia\\s*?\\(([\\w\\s]+)\\)",
+			"association": "Australia",
+			"brand": ["tvg","iowa","4njbets","pabets"],
+			"international": true
+		},
+		{
+			"name": "Australia_NEW",
+			"dir": "%A_ScriptDir%",
+			"filepattern": "(%TOM_MM%%TOM_DD%\\.pdf)",
+			"weeksearch": true,
+			"pdftracknamepattern": "Japan\\s*?\\(([\\w\\s]+)\\)",
+			"association": "Japan",
+			"brand": ["tvg","iowa","4njbets","pabets"],
+			"international": true
+		}
+	]
+}
