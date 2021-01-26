@@ -9,7 +9,7 @@
 	},
 	"dependencies": {
 		"array.ahk": "^0.1.8",
-		"biga.ahk": "^0.33.0",
+		"biga.ahk": "^0.37.0",
 		"neutron.ahk": "chunjee/neutron.ahk",
 		"json.ahk": "chunjee/json.ahk",
 		"transformStringVars.ahk": "chunjee/transformStringVars.ahk",

@@ -10,7 +10,7 @@ SetBatchLines -1 ;Go as fast as CPU will allow
 #NoTrayIcon
 #SingleInstance force
 The_ProjectName := "PPS2HTML"
-The_VersionNumb := "4.2.1"
+The_VersionNumb := "4.4.0"
 
 ; GUI
 #Include html-gui.ahk
@@ -72,6 +72,7 @@ if (A.includes(A_Args, "cleardir")) {
 }
 
 
+; parse settings file and transform dynamic variables
 Settings.DBLocation := transformStringVars(Settings.DBLocation)
 Settings.trackMappingConfig := transformStringVars(Settings.trackMappingConfig)
 Settings.exportDir := transformStringVars(Settings.exportDir)
@@ -89,7 +90,7 @@ if (Settings.DBLocation != "") {
 	}
 }
 
-
+sb_ReadSettings()
 ;/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\
 ; MAIN
 ;\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/--\--/
@@ -120,7 +121,7 @@ for key, value in Settings.parsing
 	}
 }
 if (unhandledFiles.Count() > 0 && Settings.showUnhandledFiles) {
-	msg("Nothing handling the following files:`n" A.join(A.uniq(A.map(unhandledFiles, A.trim)), ", ") "`n`nUpdate .\data\settings.json immediately and re-run. Renaming files by hand is NOT advised.")
+	msg("Nothing handling the following files:`n" A.join(A.uniq(A.map(unhandledFiles, A.trim)), ", ") "`n`nUpdate .\settings\settings.json immediately and re-run. Renaming files by hand is NOT advised.")
 }
 
 
@@ -202,7 +203,7 @@ sb_HandleCustomTrack(){
 sb_ReadSettings() {
 	global
 
-	settings_loc := A_ScriptDir "\data\settings.json"
+	settings_loc := A_ScriptDir "\settings\settings.json"
 	FileRead, The_MemoryFile, % settings_loc
 	l_settings := JSON.parse(The_MemoryFile)
 	The_MemoryFile := ;blank
@@ -215,6 +216,7 @@ sb_ReadSettings() {
 	}
 	pathsAndAssoc := A.uniq(pathsAndAssoc)
 	; add parent export dir
+	pathsAndAssoc.unshift({"name":"*Admin console data file*", "dir":transformStringVars(Settings.AdminConsoleFilePath)})
 	pathsAndAssoc.unshift({"name":"*EXPORT DIRECTORY*", "dir":transformStringVars(Settings.exportDir)})
 	html := gui_generateTable(pathsAndAssoc, ["name", "association", "dir"])
 	neutron.qs("#pathsOutput").innerHTML := html
@@ -397,7 +399,6 @@ sb_RefreshAllTracksandGUI()
 	;Sort all Array Content by DateTrack ; No not do in descending order as this will flip the output. Sat,Fri,Thur
 	AllTracks_Array := A.sortBy(AllTracks_Array, ["trackname", "date", "group"])
 
-	Today := FormatTime(A_Now, "yyyyMMdd")
 	logMsgAndGui("Refreshing GUI display list")
 	LV_Delete()
 
@@ -445,9 +446,11 @@ sb_GenerateJSON()
 {
 	global
 
-	FormatTime, Today, , yyyyMMdd
-	FileDelete, % A_ScriptDir "\" Settings.AdminConsoleFileName
-	logMsgAndGui("Building " Settings.AdminConsoleFileName)
+	Settings.AdminConsoleFilePath := transformStringVars(Settings.AdminConsoleFilePath)
+	if (A.isUndefined(Settings.AdminConsoleFilePath)) {
+		Settings.AdminConsoleFilePath := A_ScriptDir "\data.json"
+	}
+	logMsgAndGui("Building " Settings.AdminConsoleFilePath)
 	data_json := []
 	for l_key, l_value in AllTracks_Array {
 		thistrack := l_value
@@ -455,13 +458,11 @@ sb_GenerateJSON()
 		thistrack.group := StrReplace(thistrack.group, "_" , " ")
 		data_json.push(thistrack)
 	}
-	if (A.isUndefined(Settings.AdminConsoleFileName)) {
-		Settings.AdminConsoleFileName := "data.json"
-	}
 	; declutter metadata
 	data_json := A.map(data_json, Func("hfn_decluttermetadata"))
-	FileAppend, % JSON.stringify(A.uniq(data_json)), % transformStringVars(Settings.exportDir Settings.AdminConsoleFileName)
-	logMsgAndGui(Settings.AdminConsoleFileName " written to " transformStringVars(Settings.exportDir Settings.AdminConsoleFileName))
+	FileDelete, % Settings.AdminConsoleFilePath
+	FileAppend, % JSON.stringify(A.uniq(data_json)), % Settings.AdminConsoleFilePath
+	logMsgAndGui(Settings.AdminConsoleFilePath " written to " Settings.AdminConsoleFilePath)
 }
 
 sb_GenerateDB()
@@ -521,9 +522,9 @@ sb_InstallFiles()
 {
 	global
 
-	FileCreateDir, %A_ScriptDir%\data\
-	FileCreateDir, %A_ScriptDir%\data\Temp\
-	FileInstall, data\PDFtoTEXT.exe, %A_ScriptDir%\data\PDFtoTEXT.exe, 1
+	FileCreateDir, %A_ScriptDir%\settings\
+	FileCreateDir, %A_ScriptDir%\settings\Temp\
+	FileInstall, settings\PDFtoTEXT.exe, %A_ScriptDir%\settings\PDFtoTEXT.exe, 1
 
 	; html gui
 	FileCreateDir, %A_ScriptDir%\html\
@@ -541,8 +542,8 @@ sb_GlobalNameSpace()
 	AllTracks_ArraX = 1
 	FirstGBLoop = 1
 	;pdf parsing paths
-	exepath := A_ScriptDir "\data\PDFtoTEXT.exe"
-	txtpath := A_ScriptDir "\data\TEMPPDFTEXT.txt"
+	exepath := A_ScriptDir "\settings\PDFtoTEXT.exe"
+	txtpath := A_ScriptDir "\settings\TEMPPDFTEXT.txt"
 
 	tomorrow := a_now
 	tomorrow += 1, days
@@ -707,8 +708,8 @@ helper_returnNewDates(param_track)
 }
 
 fn_Parsepdf(para_FilePath) {
-	exepath := A_ScriptDir "\data\PDFtoTEXT.exe"
-	txtpath := A_ScriptDir "\data\pdftext.txt"
+	exepath := A_ScriptDir "\settings\PDFtoTEXT.exe"
+	txtpath := A_ScriptDir "\settings\pdftext.txt"
 	RunWait, "%exepath%" "%para_FilePath%" "%txtpath%",, Hide
 	Sleep, 250
 	;;Read the Trackname out of the converted text
@@ -729,9 +730,9 @@ fn_Filename(para_trackname,para_date,para_key,para_prefix)
 	}
 	para_trackname := StrReplace(para_trackname," ","_")
 	if (para_prefix != "") {
-		return para_prefix para_trackname . para_date . Options_suffix ".pdf"
+		return para_prefix "-" para_trackname . para_date . Options_suffix ".pdf"
 	}
-	return A.join(A.slice(para_key,1,3),"") "-" para_trackname . para_date . Options_suffix ".pdf"
+	return A.join(A.slice(para_key,1,5),"") "-" para_trackname . para_date . Options_suffix ".pdf"
 }
 
 fn_DownloadtoFile(para_URL)

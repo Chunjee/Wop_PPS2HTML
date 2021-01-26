@@ -239,8 +239,10 @@ pip-log.txt
 
 #Mr Developer
 .mr.developer.cfg
-*.json
-Data/*
+
+
+# *.json
 html.txt
-html.txt
-Data/PDFtoTEXT
+package-lock.json
+data.json
+DB.json
