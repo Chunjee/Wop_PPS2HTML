@@ -10,7 +10,7 @@ SetBatchLines -1 ;Go as fast as CPU will allow
 #NoTrayIcon
 #SingleInstance force
 The_ProjectName := "PPS2HTML"
-The_VersionNumb := "4.4.0"
+The_VersionNumb := "4.4.1"
 
 ; GUI
 #Include html-gui.ahk
@@ -76,7 +76,6 @@ if (A.includes(A_Args, "cleardir")) {
 Settings.DBLocation := transformStringVars(Settings.DBLocation)
 Settings.trackMappingConfig := transformStringVars(Settings.trackMappingConfig)
 Settings.exportDir := transformStringVars(Settings.exportDir)
-FileCreateDir(Settings.exportDir)
 ;; Import Existing Track DB File
 if (Settings.DBLocation != "") {
 	FileRead, The_MemoryFile, % Settings.DBLocation
@@ -413,10 +412,10 @@ sb_KickOutDuplicatesCustom(param_alltracksArray) {
 	temparray := []
 	loop, % param_alltracksArray.Count() {
 		thistrack := param_alltracksArray[A_Index]
-		if (A.indexOf(temparray, thistrack.filename) == -1) {
+		if (A.indexOf(temparray, thistrack.name thistrack.group) == -1) {
 			newarray.push(thistrack)
 		}
-		temparray.push(thistrack.filename)
+		temparray.push(thistrack.name thistrack.group)
 	}
 	return newarray
 }
@@ -460,6 +459,7 @@ sb_GenerateJSON()
 	}
 	; declutter metadata
 	data_json := A.map(data_json, Func("hfn_decluttermetadata"))
+	FileCreateDir(transformStringVars(Settings.exportDir))
 	FileDelete, % Settings.AdminConsoleFilePath
 	FileAppend, % JSON.stringify(A.uniq(data_json)), % Settings.AdminConsoleFilePath
 	logMsgAndGui(Settings.AdminConsoleFilePath " written to " Settings.AdminConsoleFilePath)
@@ -483,6 +483,7 @@ sb_RenameFiles()
 	global
 
 	logMsgAndGui("Attempting to pull files from disperse directories and renaming...")
+	FileCreateDir(transformStringVars(Settings.exportDir))
 	; Read each track in the array and perform file renaming
 	loop % AllTracks_Array.Count()
 	{
@@ -498,7 +499,7 @@ sb_RenameFiles()
 		if (A.isUndefined(exportDir)) {
 			exportPath := A_ScriptDir "\" thisTrack.filename
 		} else {
-			exportPath := exportDir "\" thisTrack.filename
+			exportPath := exportDir thisTrack.filename
 		}
 		FileCopy, % thisTrack.originalFilePath, %exportPath%, 1
 		; if the file move was unsuccessful for any reason, tell the user
@@ -521,6 +522,7 @@ sb_RenameFiles()
 sb_InstallFiles()
 {
 	global
+	FileCreateDir(transformStringVars(Settings.exportDir))
 
 	FileCreateDir, %A_ScriptDir%\settings\
 	FileCreateDir, %A_ScriptDir%\settings\Temp\
@@ -720,7 +722,7 @@ fn_Parsepdf(para_FilePath) {
 
 fn_Filename(para_trackname,para_date,para_key,para_prefix)
 {
-	global
+	global Settings
 
 	if (!Settings.filesuffix) {
 		Settings.suffix := ""
@@ -730,9 +732,11 @@ fn_Filename(para_trackname,para_date,para_key,para_prefix)
 	}
 	para_trackname := StrReplace(para_trackname," ","_")
 	if (para_prefix != "") {
-		return para_prefix "-" para_trackname . para_date . Options_suffix ".pdf"
+		output := para_prefix "-" para_trackname . para_date . Settings.suffix ".pdf"
+		return A.replace(output, "/\-+/", "-")
 	}
-	return A.join(A.slice(para_key,1,5),"") "-" para_trackname . para_date . Options_suffix ".pdf"
+	output := A.join(A.slice(para_key,1,3),"") "-" para_trackname . para_date . Settings.suffix ".pdf"
+	return A.replace(output, "/\-+/", "-")
 }
 
 fn_DownloadtoFile(para_URL)
