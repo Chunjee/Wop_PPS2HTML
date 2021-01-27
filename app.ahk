@@ -10,7 +10,7 @@ SetBatchLines -1 ;Go as fast as CPU will allow
 #NoTrayIcon
 #SingleInstance force
 The_ProjectName := "PPS2HTML"
-The_VersionNumb := "4.4.1"
+The_VersionNumb := "4.4.2"
 
 ; GUI
 #Include html-gui.ahk
@@ -483,13 +483,16 @@ sb_RenameFiles()
 	global
 
 	logMsgAndGui("Attempting to pull files from disperse directories and renaming...")
+
 	FileCreateDir(transformStringVars(Settings.exportDir))
 	; Read each track in the array and perform file renaming
 	loop % AllTracks_Array.Count()
 	{
-		; fn_guiUpdateProgressBar("The_ProgressIndicatorBar", A_Index / AllTracks_Array.Count())
-		thisTrack := AllTracks_Array[A_Index]
+		; update GUI on progress
+		html := gui_genProgress(A_Index / Settings.parsing.Count())
+		neutron.qs("#footerContent").innerHTML := html
 
+		thisTrack := AllTracks_Array[A_Index]
 		; skip this item if the original file is gone (doesn't need to be renamed because it doesn't exist)
 		if !FileExist(thisTrack.originalFilePath) {
 			continue
