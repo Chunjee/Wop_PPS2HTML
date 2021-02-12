@@ -57,7 +57,7 @@ if (A.isUndefined(Settings.logfiledir)) {
 	Settings.logfiledir := "C:\TVG\LogFiles\"
 }
 log := new log_class(The_ProjectName "-" A_YYYY A_MM A_DD, Settings.logfiledir)
-log.maxNumbOldLogs_Default := 0
+log.maxNumbOldLogs_Default := -1
 log.set_applicationname(The_ProjectName)
 logMsgAndGui(The_ProjectName " launched from user " A_UserName " on the machine " A_ComputerName ". Version: v" The_VersionNumb)
 
@@ -461,8 +461,8 @@ sb_GenerateJSON()
 	data_json := A.map(data_json, Func("hfn_decluttermetadata"))
 	FileCreateDir(transformStringVars(Settings.exportDir))
 	FileDelete, % Settings.AdminConsoleFilePath
-	FileAppend, % JSON.stringify(A.uniq(data_json)), % Settings.AdminConsoleFilePath
-	logMsgAndGui(Settings.AdminConsoleFilePath " written to " Settings.AdminConsoleFilePath)
+	FileAppend, % JSON.stringify(A.map(A.uniq(data_json))), % transformStringVars(Settings.AdminConsoleFilePath)
+	logMsgAndGui("metadata file written to " transformStringVars(Settings.AdminConsoleFilePath))
 }
 
 sb_GenerateDB()
