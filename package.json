@@ -9,16 +9,16 @@
 	},
 	"dependencies": {
 		"array.ahk": "^0.1.8",
-		"biga.ahk": "^0.37.0",
-		"neutron.ahk": "chunjee/neutron.ahk",
+		"biga.ahk": "^0.38.1",
 		"json.ahk": "chunjee/json.ahk",
-		"transformStringVars.ahk": "chunjee/transformStringVars.ahk",
-		"wrappers.ahk": "chunjee/wrappers.ahk",
 		"logs.ahk": "chunjee/logs.ahk",
-		"util-misc.ahk": "gist:cf6c862be8fa18c546d2fd67d86f84aa"
+		"neutron.ahk": "chunjee/neutron.ahk",
+		"transformStringVars.ahk": "chunjee/transformStringVars.ahk",
+		"util-misc.ahk": "gist:cf6c862be8fa18c546d2fd67d86f84aa",
+		"wrappers.ahk": "chunjee/wrappers.ahk"
 	},
 	"devDependencies": {
-		"unit-testing.ahk": "github:chunjee/unit-testing.ahk"
+		"unit-testing.ahk": "^0.5.3"
 	},
 	"author": "Shawn Brooker",
 	"license": "MIT"
